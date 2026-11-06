@@ -1,0 +1,53 @@
+# --- Private planning documents: NEVER commit or push (owner instruction) ---
+/docs/
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# Next.js / build output
+/.next/
+/out/
+/build
+next-env.d.ts
+*.tsbuildinfo
+
+# testing
+/coverage
+/playwright-report/
+/test-results/
+/blob-report/
+/playwright/.cache/
+
+# evidence captured locally (screenshots, smoke-test logs)
+/artifacts/
+
+# env files — only .env.example is committed
+.env
+.env.*
+!.env.example
+
+# never commit wallet material
+*.keypair.json
+id.json
+/.devnet/
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+.vercel
+.vscode/*
+!.vscode/extensions.json
+
+# local logs
+*.log
+
+# Original raster logo sources (≈3.4 MB, two variants of the same mark). The app
+# ships the vectorised mark in public/brand/; the originals stay local only.
+/logo.jpg
+/logoo.jpg
+
+# Local agent/editor tooling
+/.claude/
