@@ -61,9 +61,9 @@ describe("GET /api/ai/models", () => {
       available: true,
       defaultModel: "a/one",
       models: [
-        { id: "a/one", label: "One · A", isDefault: true },
-        { id: "b/two", label: "Two · B", isDefault: false },
-        { id: "c/three", label: "Three · C", isDefault: false },
+        { id: "a/one", label: "One · A", isDefault: true, name: "One", provider: "A", detail: null },
+        { id: "b/two", label: "Two · B", isDefault: false, name: "Two", provider: "B", detail: null },
+        { id: "c/three", label: "Three · C", isDefault: false, name: "Three", provider: "C", detail: null },
       ],
     });
     expect(response.headers.get("cache-control")).toContain("no-store");

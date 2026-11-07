@@ -8,7 +8,7 @@ import type { SimulationResult } from "../types";
 export function SimulationPanel({ running, result }: { running: boolean; result: SimulationResult | null }) {
   return (
     <section aria-labelledby="simulation-heading" className="space-y-3">
-      <h3 id="simulation-heading" className="flex items-center gap-2 font-display text-lg font-semibold text-white">
+      <h3 id="simulation-heading" className="flex items-center gap-2 font-heading text-lg font-semibold text-white">
         <Activity className="size-4 text-muted" aria-hidden /> Devnet simulation
       </h3>
       {running ? (

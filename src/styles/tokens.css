@@ -24,11 +24,15 @@
   --radius-control: 10px;
   --radius-panel: 18px;
 
-  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* Display = poster headlines (single Black weight); heading = smaller titles. */
+  --font-display: var(--font-basement), "Arial Black", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-instrument), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
 
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-cine: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
 :root {

@@ -49,7 +49,7 @@ function explainSummary(state: MachineState): ExplainRequest | null {
 function PanelHeading({ index, title, children }: { index: string; title: string; children?: React.ReactNode }) {
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-3">
-      <h2 className="flex items-baseline gap-3 font-display text-xl font-semibold tracking-[-0.01em] text-white">
+      <h2 className="flex items-baseline gap-3 font-heading text-xl font-semibold tracking-[-0.01em] text-white">
         <span className="font-mono text-[0.8rem] text-mint">{index}</span>
         {title}
       </h2>

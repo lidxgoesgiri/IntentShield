@@ -29,7 +29,7 @@ export function IntentSummary({
   return (
     <section aria-labelledby="summary-heading" className="space-y-4">
       <div className="flex items-baseline justify-between gap-3">
-        <h3 id="summary-heading" className="font-display text-lg font-semibold text-white">
+        <h3 id="summary-heading" className="font-heading text-lg font-semibold text-white">
           You requested
         </h3>
         <span className="type-caption">Solana Devnet</span>

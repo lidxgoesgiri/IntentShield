@@ -71,7 +71,7 @@ Key modules: `src/features/verification/lib/verify-native-sol-transfer.ts` (pure
 
 ## Tech stack
 
-Next.js 16 (App Router, Turbopack) · React 19 · TypeScript 6 (strict) · `@solana/kit` 8 · `@solana-program/system` · `@solana/kit-plugin-wallet` (Wallet Standard) · Tailwind CSS 4 · Radix UI · Zod 4 · GSAP 3 + ScrollTrigger (landing only, lazy, reduced-motion aware) · Vitest 5 + Testing Library · Playwright 1.65 + axe-core.
+Next.js 16 (App Router, Turbopack) · React 19 · TypeScript 6 (strict) · `@solana/kit` 8 · `@solana-program/system` · `@solana/kit-plugin-wallet` (Wallet Standard) · Tailwind CSS 4 · Radix UI · Zod 4 · GSAP 3 + ScrollTrigger + SplitText (landing only, lazy, reduced-motion aware) · Vitest 5 + Testing Library · Playwright 1.65 + axe-core.
 
 ## Getting started
 
@@ -142,6 +142,6 @@ The suites cover the PRD matrices:
 
 - **Tools used:** Claude Code (Anthropic) assisted with implementation, tests, and documentation during the hackathon window. At runtime, the app optionally calls an OpenRouter-compatible model (configured by the operator) for draft parsing and explanations.
 - **Human review and verification:** see the test suites and smoke-test evidence; claims in this README are limited to what those runs demonstrate.
-- **Third-party libraries:** listed in `package.json` (Next.js, React, Solana Kit, Radix UI, Tailwind CSS, GSAP, Zod, Vitest, Playwright, axe-core, lucide-react) under their respective licenses. Fonts (Space Grotesk, Geist) are self-hosted via `next/font` under the SIL Open Font License.
+- **Third-party libraries:** listed in `package.json` (Next.js, React, Solana Kit, Radix UI, Tailwind CSS, GSAP, Zod, Vitest, Playwright, axe-core, lucide-react) under their respective licenses. Fonts are self-hosted under the SIL Open Font License 1.1: Basement Grotesque by basement.studio (display, `src/app/fonts/basement-grotesque/` with its license), Instrument Sans and IBM Plex Mono (via `next/font`).
 
 Not affiliated with the Solana Foundation, MLH, or any wallet provider.

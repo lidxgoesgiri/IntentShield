@@ -32,7 +32,7 @@ export function SecurityProofLab() {
       </div>
 
       <fieldset>
-        <legend className="mb-3 font-display text-lg font-semibold text-white">Choose a scenario</legend>
+        <legend className="mb-3 font-heading text-lg font-semibold text-white">Choose a scenario</legend>
         <div role="radiogroup" aria-labelledby={`${groupId}-legend`} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <span id={`${groupId}-legend`} className="sr-only">
             Demo scenario
@@ -69,7 +69,7 @@ export function SecurityProofLab() {
 
       <div className="grid gap-6 lg:grid-cols-12">
         <section aria-labelledby="lab-intent" className="hairline-panel space-y-4 p-5 lg:col-span-4">
-          <h2 id="lab-intent" className="font-display text-lg font-semibold text-white">
+          <h2 id="lab-intent" className="font-heading text-lg font-semibold text-white">
             Approved intent <span className="type-caption">(sample)</span>
           </h2>
           <dl className="space-y-3 text-[0.85rem]">
@@ -117,7 +117,7 @@ export function SecurityProofLab() {
 
       <div className="flex flex-col gap-4 rounded-[var(--radius-panel)] border border-hairline p-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
-          <p className="font-display text-lg font-semibold text-white">Ready for the real thing?</p>
+          <p className="font-heading text-lg font-semibold text-white">Ready for the real thing?</p>
           <p className="text-[0.925rem] text-silver">
             The workspace leaves this demo: it needs a Devnet wallet and builds a real, wallet-signed transaction.
           </p>

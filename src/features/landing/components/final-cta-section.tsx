@@ -7,7 +7,7 @@ import { RibbonSegment } from "../visuals/ribbon-segment";
 /** S08 — Final CTA: "Understand first. Sign second." (PRD §10.1). */
 export function FinalCTASection() {
   return (
-    <section id="get-started" aria-labelledby="final-title" className="relative overflow-hidden border-t border-hairline">
+    <section id="get-started" aria-labelledby="final-title" className="relative overflow-hidden border-t border-hairline" data-atmosphere="0.8">
       <div aria-hidden className="landing-ambient landing-hero-paint absolute inset-0 opacity-70" />
       <div className="page-container relative py-[clamp(80px,13vw,200px)]">
         <p className="type-eyebrow flex items-center gap-3">
@@ -15,9 +15,11 @@ export function FinalCTASection() {
           <span aria-hidden className="h-px w-10 bg-hairline" />
           <span>Get started</span>
         </p>
-        <h2 id="final-title" className="type-h1 mt-8 max-w-[14ch]">
-          <span className="block">{FINAL_COPY.title[0]}</span>
-          <span className="relative inline-block">
+        <h2 id="final-title" className="type-display mt-10 max-w-[12ch] text-[clamp(2.4rem,9vw,8.5rem)] leading-[0.88]">
+          <span className="block" data-reveal="clip">
+            {FINAL_COPY.title[0]}
+          </span>{" "}
+          <span className="relative inline-block" data-reveal="clip">
             {FINAL_COPY.title[1]}
             <RibbonSegment
               name="final"

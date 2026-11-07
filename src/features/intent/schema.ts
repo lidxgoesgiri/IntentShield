@@ -29,7 +29,19 @@ export const AiModelsResponseSchema = z
     available: z.boolean(),
     defaultModel: ModelIdSchema.nullable(),
     models: z
-      .array(z.object({ id: ModelIdSchema, label: z.string().min(1).max(160), isDefault: z.boolean() }).strict())
+      .array(
+        z
+          .object({
+            id: ModelIdSchema,
+            label: z.string().min(1).max(160),
+            isDefault: z.boolean(),
+            // Display fields (optional for backward compatibility).
+            name: z.string().min(1).max(80).optional(),
+            provider: z.string().max(60).optional(),
+            detail: z.string().max(80).nullable().optional(),
+          })
+          .strict(),
+      )
       .max(24),
   })
   .strict();

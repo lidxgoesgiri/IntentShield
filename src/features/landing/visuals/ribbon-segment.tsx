@@ -33,6 +33,7 @@ export function RibbonSegment({
       <path d={d} fill="none" className="ribbon-track" strokeWidth={strokeWidth + 1.5} strokeLinecap="round" />
       <path d={d} fill="none" className="ribbon-glow" strokeWidth={strokeWidth + 3} strokeLinecap="round" pathLength={1} strokeDasharray="1" strokeDashoffset="0" data-ribbon-glow="" />
       <path d={d} fill="none" className="ribbon-path" strokeWidth={strokeWidth} strokeLinecap="round" pathLength={1} strokeDasharray="1" strokeDashoffset="0" data-ribbon-path="" />
+      <path d={d} fill="none" className="ribbon-pulse" strokeWidth={strokeWidth + 0.8} strokeLinecap="round" pathLength={1} />
     </svg>
   );
 }

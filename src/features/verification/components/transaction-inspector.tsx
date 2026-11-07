@@ -16,7 +16,7 @@ export function TransactionInspector({ result, messageBytes }: { result: Verific
   return (
     <section aria-labelledby="inspector-heading" className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <h3 id="inspector-heading" className="font-display text-lg font-semibold text-white">
+        <h3 id="inspector-heading" className="font-heading text-lg font-semibold text-white">
           Pre-sign inspection
         </h3>
         <p className="type-caption flex items-center gap-1.5" title={result.messageFingerprint}>

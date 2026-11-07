@@ -1,47 +1,27 @@
 import "server-only";
+import { describeModelDisplay, formatModelLabel } from "@/features/intent/lib/model-display";
 import type { AiConfig } from "./config";
 
 /** Public, non-secret description of a selectable model. */
-export type ModelOption = Readonly<{ id: string; label: string; isDefault: boolean }>;
+export type ModelOption = Readonly<{
+  id: string;
+  label: string;
+  isDefault: boolean;
+  name: string;
+  provider: string;
+  detail: string | null;
+}>;
 
-const PROVIDER_NAMES: Record<string, string> = {
-  anthropic: "Anthropic",
-  deepseek: "DeepSeek",
-  "dots-studio": "Dots Studio",
-  google: "Google",
-  liquid: "Liquid AI",
-  "meta-llama": "Meta",
-  mistralai: "Mistral",
-  nvidia: "NVIDIA",
-  openai: "OpenAI",
-  qwen: "Qwen",
-  "x-ai": "xAI",
-  "xingchen-agi": "XingChen",
-};
-
-const KNOWN_ACRONYMS = new Set(["lfm", "gpt", "llm", "vlm", "moe", "agi"]);
-
-function titleToken(token: string): string {
-  // Sizes and versions (26b, 3.5, a4b, 2.6b) read best in upper case.
-  if (/^[\d.]+[a-z]?$/i.test(token) || /^[a-z]\d+[a-z]$/i.test(token)) return token.toUpperCase();
-  // Two-letter tokens (vl, it) and known acronyms; ordinary words stay words.
-  if (/^[a-z]{1,2}$/i.test(token) || KNOWN_ACRONYMS.has(token.toLowerCase())) return token.toUpperCase();
-  return token.charAt(0).toUpperCase() + token.slice(1);
-}
-
-/** Human-readable label derived from a model id (display only). */
+/** Human-readable label derived from a model id (display only; the id is never altered). */
 export function describeModel(id: string): string {
-  const slash = id.indexOf("/");
-  const provider = slash > 0 ? id.slice(0, slash) : "";
-  const rest = slash > 0 ? id.slice(slash + 1) : id;
-  const [name = rest, variant] = rest.split(":");
-  const words = name.split(/[-_]/).filter(Boolean).map(titleToken).join(" ");
-  const providerName = PROVIDER_NAMES[provider] ?? provider.split("-").filter(Boolean).map(titleToken).join(" ");
-  return `${words}${providerName ? ` · ${providerName}` : ""}${variant ? ` (${variant})` : ""}`;
+  return formatModelLabel(describeModelDisplay(id));
 }
 
 export function listModelOptions(config: AiConfig): ModelOption[] {
-  return config.models.map((id) => ({ id, label: describeModel(id), isDefault: id === config.defaultModel }));
+  return config.models.map((id) => {
+    const display = describeModelDisplay(id);
+    return { id, label: formatModelLabel(display), isDefault: id === config.defaultModel, ...display };
+  });
 }
 
 /**

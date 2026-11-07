@@ -64,7 +64,7 @@ export function ReceiptCard({ data, showPermalink = true }: { data: ReceiptCardD
   return (
     <section aria-labelledby="receipt-heading" className="space-y-4 rounded-[var(--radius-panel)] border border-hairline bg-obsidian/50 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 id="receipt-heading" className="font-display text-lg font-semibold text-white">
+        <h3 id="receipt-heading" className="font-heading text-lg font-semibold text-white">
           Receipt
         </h3>
         <span className={cn("inline-flex items-center gap-2 font-mono text-[0.8rem] uppercase tracking-[0.08em]", view.tone)} role="status">

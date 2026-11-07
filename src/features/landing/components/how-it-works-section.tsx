@@ -6,15 +6,15 @@ import { SectionHeader } from "./section-header";
 /** S04 — How It Works: Simulation → Deterministic Validation → AI Explanation (PRD §10.1). */
 export function HowItWorksSection() {
   return (
-    <section id="how-it-works" aria-labelledby="how-title" className="border-t border-hairline" data-how-section="">
+    <section id="how-it-works" data-atmosphere="0.5" aria-labelledby="how-title" className="border-t border-hairline" data-how-section="">
       <div className="page-container py-[clamp(64px,11vw,168px)]">
-        <SectionHeader index="04" eyebrow="How it works" title={HOW_COPY.title} titleId="how-title" lead={HOW_COPY.lead} />
+        <SectionHeader index="04" eyebrow="How it works" title={HOW_COPY.title} titleId="how-title" lead={HOW_COPY.lead} split="chars" />
 
-        <div className="relative mt-16 lg:mt-24">
+        <div className="how-stage relative mt-16 lg:mt-24 lg:py-10" data-how-pin="">
           <EnergyRibbon />
           <ol className="relative space-y-10 pl-16 lg:mt-6 lg:grid lg:grid-cols-3 lg:gap-10 lg:space-y-0 lg:pl-0">
             {HOW_COPY.steps.map((step) => (
-              <li key={step.id} className="space-y-3 lg:text-center" data-reveal="" data-how-step={step.id}>
+              <li key={step.id} className="how-step space-y-3 lg:text-center" data-how-step={step.id} data-active="true">
                 <p className="font-mono text-[0.8rem] tracking-[0.12em] text-mint">{step.index}</p>
                 <h3 className="type-h3">{step.title}</h3>
                 <p className="mx-auto max-w-[36ch] text-silver">{step.body}</p>
@@ -24,7 +24,7 @@ export function HowItWorksSection() {
           </ol>
         </div>
 
-        <div className="mt-16 grid gap-6 border-y border-hairline py-8 lg:grid-cols-12" data-reveal="">
+        <div className="mt-16 grid gap-6 border-y border-hairline py-8 lg:grid-cols-12" data-reveal="clip">
           <p className="type-eyebrow lg:col-span-3">Technical order (§13.3)</p>
           <div className="space-y-3 lg:col-span-9">
             <p className="font-data text-[0.9rem] leading-relaxed text-white">

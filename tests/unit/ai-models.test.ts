@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getAiConfig, MAX_ALLOWLISTED_MODELS, parseModelList } from "@/server/ai/config";
+import { baseModelId, describeModelDisplay } from "@/features/intent/lib/model-display";
 import { createModelHealth, describeModel, listModelOptions, resolveModelChain } from "@/server/ai/models";
 
 // The exact shape the owner used in .env.local: one variable, comma-separated, uneven spaces.
@@ -42,12 +43,31 @@ describe("model allowlist parsing", () => {
 
 describe("model labels (display only)", () => {
   it.each([
-    ["nvidia/nemotron-3.5-lightning:free", "Nemotron 3.5 Lightning · NVIDIA (free)"],
-    ["google/gemma-4-26b-a4b-it:free", "Gemma 4 26B A4B IT · Google (free)"],
-    ["liquid/lfm-2.5-2.6b:free", "LFM 2.5 2.6B · Liquid AI (free)"],
+    ["nvidia/nemotron-3.5-lightning:free", "Nemotron 3.5 Lightning · NVIDIA"],
+    ["google/gemma-4-26b-a4b-it:free", "Gemma 4 26B · Google"],
+    ["liquid/lfm-2.5-2.6b:free", "LFM 2.5 · Liquid AI"],
     ["acme-labs/foo-bar", "Foo Bar · Acme Labs"],
+    ["acme-labs/foo-bar-free:free", "Foo Bar · Acme Labs"],
   ])("%s → %s", (id, label) => {
     expect(describeModel(id)).toBe(label);
+  });
+
+  it("uses the catalog names from the brief and never shows a free tier", () => {
+    expect(describeModelDisplay("nvidia/nemotron-3-ultra-550b-a55b:free").name).toBe("Nemotron 3 Ultra");
+    expect(describeModelDisplay("google/gemma-4-26b-a4b-it:free").name).toBe("Gemma 4 26B");
+    expect(describeModelDisplay("xingchen-agi/xing4.0-29b-a4b:free").name).toBe("Xing 4.0");
+    const options = listModelOptions(getAiConfig({ OPENROUTER_API_KEY: "k", OPENROUTER_MODEL: OWNER_STYLE }));
+    for (const option of options) {
+      expect(`${option.label} ${option.name} ${option.provider} ${option.detail ?? ""}`).not.toMatch(/free/i);
+    }
+  });
+
+  it("keeps the exact OpenRouter model id (including :free) for routing", () => {
+    const options = listModelOptions(getAiConfig({ OPENROUTER_API_KEY: "k", OPENROUTER_MODEL: OWNER_STYLE }));
+    expect(options.map((option) => option.id)).toEqual(getAiConfig({ OPENROUTER_API_KEY: "k", OPENROUTER_MODEL: OWNER_STYLE }).models);
+    expect(options.every((option) => option.id.endsWith(":free"))).toBe(true);
+    expect(baseModelId("nvidia/nemotron-3.5-super-vl:free")).toBe("nvidia/nemotron-3.5-super-vl");
+    expect(baseModelId("org/model")).toBe("org/model");
   });
 
   it("marks exactly one default option", () => {

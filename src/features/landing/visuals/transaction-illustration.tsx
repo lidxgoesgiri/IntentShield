@@ -16,7 +16,7 @@ export function SampleIntentCard({ className }: { className?: string }) {
           Demo / sample data
         </span>
       </div>
-      <p className="mt-3 font-display text-[1.05rem] leading-snug text-white">
+      <p className="mt-3 font-heading text-[1.05rem] leading-snug text-white">
         “Send <span className="text-mint">0.1 SOL</span> to <span className="font-data">{shortenAddress(DEMO_PARTIES.recipient, 6, 6)}</span>”
       </p>
       <p className="mt-2 font-data text-[0.75rem] text-muted">= 100,000,000 lamports · native SOL</p>
