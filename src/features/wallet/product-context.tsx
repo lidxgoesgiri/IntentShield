@@ -44,7 +44,7 @@ export function ProductProvider({ children }: { children: ReactNode }) {
   const online = useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true);
 
   useEffect(() => {
-    if (publicConfig.configError) return;
+    if (publicConfig.configError || !online) return;
     const controller = new AbortController();
     checkDevnet(getRpcPort(), controller.signal).then((result) => {
       if (controller.signal.aborted) return;
@@ -53,12 +53,17 @@ export function ProductProvider({ children }: { children: ReactNode }) {
       else setDevnet({ state: "unavailable", message: result.message });
     });
     return () => controller.abort();
-  }, [checkNonce]);
+  }, [checkNonce, online]);
 
   const recheckDevnet = useCallback(() => {
     setDevnet((current) => (current.state === "misconfigured" ? current : { state: "checking" }));
     setCheckNonce((n) => n + 1);
   }, []);
+
+  useEffect(() => {
+    window.addEventListener("online", recheckDevnet);
+    return () => window.removeEventListener("online", recheckDevnet);
+  }, [recheckDevnet]);
 
   const value = useMemo(() => ({ walletClient, devnet, recheckDevnet, online }), [walletClient, devnet, recheckDevnet, online]);
   return <ProductContext.Provider value={value}>{children}</ProductContext.Provider>;

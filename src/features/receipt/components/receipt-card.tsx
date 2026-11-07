@@ -48,6 +48,7 @@ export type ReceiptCardData = Readonly<{
   sender: string | null;
   recipient: string | null;
   feeLamports: bigint | null;
+  estimatedFeeLamports?: bigint | null;
   blockTime: bigint | null;
   slot: bigint | null;
   confirmationStatus: string | null;
@@ -57,32 +58,34 @@ export type ReceiptCardData = Readonly<{
 /** ReceiptCard states: submitted, confirming, confirmed, on-chain-failed, expired, unknown (PRD §12). */
 export function ReceiptCard({ data, showPermalink = true }: { data: ReceiptCardData; showPermalink?: boolean }) {
   const view = STATUS_VIEW[data.status];
+  const finalized = data.status === "confirmed" && data.confirmationStatus === "finalized";
   const explorer = explorerTransactionUrl(data.signature);
   const time =
     data.blockTime !== null ? new Date(Number(data.blockTime) * 1000).toISOString().replace("T", " ").replace(".000Z", " UTC") : null;
 
   return (
-    <section aria-labelledby="receipt-heading" className="space-y-4 rounded-[var(--radius-panel)] border border-hairline bg-obsidian/50 p-5">
+    <section aria-labelledby="receipt-heading" className="hairline-panel panel-space space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 id="receipt-heading" className="font-heading text-lg font-semibold text-white">
           Receipt
         </h3>
-        <span className={cn("inline-flex items-center gap-2 font-mono text-[0.8rem] uppercase tracking-[0.08em]", view.tone)} role="status">
+        <span className={cn("inline-flex items-center gap-2 font-mono text-[0.8125rem] uppercase tracking-[0.08em]", view.tone)} role="status">
           {view.icon}
-          {view.label}
+          {finalized ? "Finalized" : view.label}
         </span>
       </div>
-      <p className="text-[0.925rem] text-silver">{data.error ?? view.note}</p>
+      <p className="text-[0.925rem] text-silver">{data.error ?? (finalized ? "Finalized on Solana Devnet." : view.note)}</p>
+      {data.amountLamports !== null ? (
+        <div className="rounded-[var(--radius-control)] border border-hairline bg-obsidian/60 p-4">
+          <p className="type-eyebrow">{data.status === "onchain_failed" ? "Requested transfer" : "Transfer amount"}</p>
+          <p className="font-data mt-2 text-[clamp(1.5rem,3.5vw,2.5rem)] leading-tight text-white">{formatLamportsAsSol(data.amountLamports)} <span className="text-lg text-mint">SOL</span></p>
+        </div>
+      ) : null}
       <dl className="divide-y divide-hairline rounded-[var(--radius-control)] border border-hairline text-[0.85rem]">
         <Item label="Signature">
           <span className="font-data min-w-0 flex-1 pt-2.5 text-white">{data.signature}</span>
           <CopyButton value={data.signature} label="transaction signature" />
         </Item>
-        {data.amountLamports !== null ? (
-          <Item label="Amount">
-            <span className="font-data pt-2.5 text-white">{formatLamportsAsSol(data.amountLamports)} SOL</span>
-          </Item>
-        ) : null}
         {data.sender ? (
           <Item label="From">
             <span className="font-data min-w-0 flex-1 pt-2.5 text-white">{data.sender}</span>
@@ -94,8 +97,13 @@ export function ReceiptCard({ data, showPermalink = true }: { data: ReceiptCardD
           </Item>
         ) : null}
         {data.feeLamports !== null ? (
-          <Item label="Network fee">
+          <Item label="Actual network fee">
             <span className="font-data pt-2.5 text-white">{formatLamportsAsSol(data.feeLamports)} SOL</span>
+          </Item>
+        ) : null}
+        {data.estimatedFeeLamports != null ? (
+          <Item label="Estimated fee">
+            <span className="font-data pt-2.5 text-white">{formatLamportsAsSol(data.estimatedFeeLamports)} SOL <span className="text-muted">· pre-sign RPC estimate</span></span>
           </Item>
         ) : null}
         {time ? (
@@ -103,6 +111,7 @@ export function ReceiptCard({ data, showPermalink = true }: { data: ReceiptCardD
             <span className="font-data pt-2.5 text-white">{time}</span>
           </Item>
         ) : null}
+        {data.slot !== null ? <Item label="Slot"><span className="font-data pt-2.5 text-white">{data.slot.toString()}</span></Item> : null}
         <Item label="Cluster">
           <span className="pt-2.5 text-white">Solana Devnet{data.confirmationStatus ? ` · ${data.confirmationStatus}` : ""}</span>
         </Item>

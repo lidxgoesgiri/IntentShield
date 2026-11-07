@@ -85,7 +85,10 @@ export async function preflightAndSimulate(
 
   try {
     const value = await rpc.simulateTransaction(prepared.unsignedWireBase64, options.signal);
-    if (value.err !== null && value.err !== undefined) {
+    if (!value || !Object.hasOwn(value, "err") || value.err === undefined) {
+      return unavailable(prepared, now(), "unavailable", "The simulation response did not include an explicit outcome. Signing stays disabled.");
+    }
+    if (value.err !== null) {
       const described = describeTransactionError(value.err);
       return Object.freeze({
         ok: false,

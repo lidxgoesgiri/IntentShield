@@ -10,12 +10,21 @@ export type RateDecision = Readonly<{ allowed: boolean; retryAfterSeconds: numbe
 export function createRateLimiter(options: { limit: number; windowMs: number; now?: () => number; maxKeys?: number }) {
   const hits = new Map<string, number[]>();
   const now = options.now ?? Date.now;
-  const maxKeys = options.maxKeys ?? 5_000;
+  const maxKeys = Math.max(1, Math.floor(options.maxKeys ?? 5_000));
 
   return {
     check(key: string): RateDecision {
       const current = now();
       const windowStart = current - options.windowMs;
+      if (!hits.has(key) && hits.size >= maxKeys) {
+        for (const [storedKey, times] of hits) {
+          if (times.every((time) => time <= windowStart)) hits.delete(storedKey);
+        }
+        // Do not evict an active client: an attacker could otherwise rotate
+        // keys to erase another client's limit. Refuse new keys until capacity
+        // expires, keeping both the map and its hit arrays strictly bounded.
+        if (hits.size >= maxKeys) return { allowed: false, retryAfterSeconds: Math.max(1, Math.ceil(options.windowMs / 1000)) };
+      }
       const recent = (hits.get(key) ?? []).filter((t) => t > windowStart);
       if (recent.length >= options.limit) {
         const oldest = recent[0] ?? current;
@@ -24,18 +33,38 @@ export function createRateLimiter(options: { limit: number; windowMs: number; no
       }
       recent.push(current);
       hits.set(key, recent);
-      if (hits.size > maxKeys) {
-        for (const [k, times] of hits) {
-          if (times.every((t) => t <= windowStart)) hits.delete(k);
-          if (hits.size <= maxKeys) break;
-        }
-      }
       return { allowed: true, retryAfterSeconds: 0 };
     },
     reset() {
       hits.clear();
     },
   };
+}
+
+export type AiProtection = Readonly<{
+  limiter: ReturnType<typeof createRateLimiter>;
+  budget: ReturnType<typeof createDailyBudget>;
+}>;
+
+/** Share guards across parse/explain route factories in this process only.
+ * Serverless processes still have independent state: this is not an account-
+ * wide spend cap, and does not require a paid external persistence service.
+ */
+export function instanceAiProtection(options: { requestsPerMinute: number; dailyBudget: number }): AiProtection {
+  const scope = globalThis as typeof globalThis & {
+    __intentShieldAiProtection?: { signature: string; protection: AiProtection };
+  };
+  const signature = `${options.requestsPerMinute}:${options.dailyBudget}`;
+  if (scope.__intentShieldAiProtection?.signature !== signature) {
+    scope.__intentShieldAiProtection = {
+      signature,
+      protection: {
+        limiter: createRateLimiter({ limit: options.requestsPerMinute, windowMs: 60_000 }),
+        budget: createDailyBudget({ budget: options.dailyBudget }),
+      },
+    };
+  }
+  return scope.__intentShieldAiProtection.protection;
 }
 
 /** Per-instance daily request budget guard (protects the AI bill). */

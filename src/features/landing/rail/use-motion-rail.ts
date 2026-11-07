@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, type RefObject } from "react";
-import { MOTION_CONDITIONS } from "../motion/motion-preferences";
+import { useEffect, useRef, type RefObject } from "react";
 import {
   advanceOffset,
   copiesNeeded,
@@ -36,12 +35,15 @@ export function useMotionRail(
   controllersRef: RefObject<Set<MarqueeTrackController>>,
   pausedRef: RefObject<boolean>,
   revision: number,
+  enabled: boolean,
 ) {
+  const offsets = useRef(new WeakMap<HTMLElement, { offset: number; width: number }>());
   useEffect(() => {
     const section = sectionRef.current;
     const controllers = controllersRef.current;
     if (!section || !controllers || controllers.size === 0) return;
-    if (!window.matchMedia(MOTION_CONDITIONS.motion).matches) return;
+    if (!enabled) { section.dataset.railRunning = "false"; return; }
+    section.dataset.railRunning = "true";
 
     const hoverCapable = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
     let profile: RailProfile = RAIL_PROFILES[railProfileForWidth(window.innerWidth)];
@@ -61,7 +63,8 @@ export function useMotionRail(
         if (!(width > 0)) continue;
         if (!track.initialised) {
           // A rightward track starts one sequence to the left so its leading edge is always covered.
-          track.offset = track.controller.direction === "right" ? -width : 0;
+          const saved = offsets.current.get(track.controller.strip);
+          track.offset = saved ? saved.offset / saved.width * width : track.controller.direction === "right" ? -width : 0;
           track.initialised = true;
         } else if (track.width > 0) {
           // Keep the same relative position when the sequence width changes.
@@ -71,6 +74,7 @@ export function useMotionRail(
         track.offset = wrapOffset(track.offset, width);
         track.controller.setCopies(copiesNeeded(track.controller.viewport.clientWidth, width));
         track.controller.strip.style.transform = `translate3d(${track.offset.toFixed(2)}px, 0, 0)`;
+        offsets.current.set(track.controller.strip, { offset: track.offset, width: track.width });
       }
     };
 
@@ -130,6 +134,7 @@ export function useMotionRail(
         track.multiplier = dampMultiplier(track.multiplier, target, dt, profile);
         track.offset = advanceOffset(track.offset, track.controller.direction, profile[track.controller.speedKey] * track.multiplier, dt, track.width);
         track.controller.strip.style.transform = `translate3d(${track.offset.toFixed(2)}px, 0, 0)`;
+        offsets.current.set(track.controller.strip, { offset: track.offset, width: track.width });
       }
       section.dataset.railVelocity = velocity.toFixed(0);
       raf = requestAnimationFrame(frame);
@@ -171,6 +176,7 @@ export function useMotionRail(
       hoverCleanups.forEach((cleanup) => cleanup());
       delete section.dataset.railActive;
       delete section.dataset.railVelocity;
+      section.dataset.railRunning = "false";
     };
-  }, [sectionRef, controllersRef, pausedRef, revision]);
+  }, [sectionRef, controllersRef, pausedRef, revision, enabled]);
 }

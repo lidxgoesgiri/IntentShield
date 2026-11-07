@@ -2,6 +2,7 @@ import { ArrowDown, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
+import { HISTORICAL_DEVNET_PROOF } from "@/config/proof";
 import { HERO_COPY } from "../config/section-copy";
 import { SampleCheckCard, SampleIntentCard } from "../visuals/transaction-illustration";
 import { SignatureRibbon } from "../visuals/signature-ribbon";
@@ -19,7 +20,7 @@ export function HeroSection() {
       <div aria-hidden className="landing-ambient landing-grid-lines absolute inset-0 opacity-30" />
       <SignatureRibbon variant="hero" className="pointer-events-none absolute inset-0 hidden h-full w-full lg:block" />
 
-      <div className="page-container relative z-10 pb-[clamp(72px,10vw,140px)] pt-[clamp(20px,4vh,44px)]">
+      <div className="page-container relative z-10 pb-[clamp(40px,6vw,88px)] pt-[clamp(20px,4vh,44px)]">
         <div className="flex items-center justify-between gap-6 border-b border-hairline/70 pb-4" data-hero-meta="">
           <p className="type-eyebrow flex items-center gap-3">
             <span className="text-mint">01</span>
@@ -42,8 +43,8 @@ export function HeroSection() {
           </span>
         </h1>
 
-        <div className="mt-[clamp(36px,6vw,72px)] grid gap-14 lg:grid-cols-12 lg:gap-8">
-          <div className="hero-copy space-y-8 lg:col-span-5" data-hero-copy="">
+        <div className="mt-[clamp(28px,4vw,56px)] grid gap-8 lg:grid-cols-12 lg:gap-8">
+          <div className="hero-copy space-y-6 lg:col-span-5" data-hero-copy="">
             <p className="font-heading text-[clamp(1.35rem,2.1vw,1.95rem)] font-semibold leading-[1.15] tracking-[-0.02em] text-white">
               {HERO_COPY.subtitle}
             </p>
@@ -60,6 +61,9 @@ export function HeroSection() {
                 </a>
               </Button>
             </div>
+            <Link href={`/tx/${HISTORICAL_DEVNET_PROOF.signature}`} className="inline-flex min-h-11 flex-wrap items-center gap-x-2 text-sm text-silver underline decoration-mint/50 underline-offset-4 hover:text-white">
+              <span className="text-mint">On-chain proof</span><span>0.01 SOL · historical Devnet transfer</span>
+            </Link>
             <div className="hero-trust-frame border-t border-hairline/80">
               <ul className="hero-trust" aria-label="What IntentShield is">
                 {HERO_COPY.trust.map((item) => (
@@ -96,7 +100,7 @@ export function HeroSection() {
             </div>
 
             <div className="space-y-5 lg:hidden">
-              <div className="relative mx-auto aspect-square w-full max-w-[440px]">
+              <div className="relative mx-auto aspect-square w-full max-w-[240px] sm:max-w-[300px]">
                 <HeroSecurityCore />
                 <SignatureRibbon variant="compact" className="pointer-events-none absolute inset-0 h-full w-full" />
               </div>

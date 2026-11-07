@@ -7,10 +7,9 @@ export default function NotFound() {
     <main id="main" className="page-container flex min-h-dvh flex-col items-start justify-center gap-6 py-20">
       <BrandMark className="size-12" />
       <p className="type-eyebrow">404 · Not found</p>
-      <h1 className="type-h2 max-w-3xl">This page does not exist.</h1>
+      <h1 className="page-title max-w-3xl">This page does not exist.</h1>
       <p className="type-lead">
-        If you followed a receipt link, check that the transaction signature is complete — signatures are 87–88 base58
-        characters.
+        If you followed a receipt link, check that the complete Solana transaction signature was copied correctly.
       </p>
       <div className="flex flex-wrap gap-3">
         <Button asChild>

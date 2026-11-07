@@ -57,6 +57,10 @@
   stroke-dasharray: 60 880;
   animation: core-contour 14s linear infinite;
 }
+
+[data-motion-paused="true"] :is(.core-contour, .signature-ribbon-pulse, .ribbon-pulse) {
+  animation-play-state: paused;
+}
 .core-reveal {
   animation: core-reveal 800ms var(--ease-out-soft) both;
   transform-origin: 50% 50%;
@@ -153,8 +157,8 @@
 .hero-line-inner {
   display: inline-block;
   transform-origin: 0 100%;
-  animation: hero-line-rise 1150ms var(--ease-out-expo) backwards;
-  animation-delay: calc(140ms + var(--i, 0) * 120ms);
+  animation: hero-line-rise var(--duration-reveal) var(--ease-out-expo) backwards;
+  animation-delay: calc(var(--i, 0) * 80ms);
 }
 @keyframes hero-line-rise {
   from {
@@ -296,7 +300,7 @@
 
 /* Monumental three-line headline with deliberate, asymmetric offsets. */
 .rail-title {
-  font-size: clamp(2.4rem, 10.6vw, 9.25rem);
+  font-size: clamp(2.4rem, 8.2vw, 7rem);
   line-height: 0.86;
 }
 .rail-title-line {
@@ -396,7 +400,7 @@
 .rail-word-text {
   font-family: var(--font-display);
   font-weight: 900;
-  font-size: clamp(2.6rem, 8.2vw, 8rem);
+  font-size: clamp(2.6rem, 6.8vw, 6rem);
   line-height: 1;
   letter-spacing: -0.03em;
   text-transform: uppercase;

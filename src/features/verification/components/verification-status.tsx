@@ -26,7 +26,7 @@ export function VerificationStatus({ result }: { result: VerificationResult }) {
         {reasons.map((reason) => (
           <li key={reason.code}>
             <span className="font-medium text-white">{reason.title}.</span> {reason.detail}{" "}
-            <code className="font-mono text-[0.75rem] text-muted">{reason.code}</code>
+            <code className="font-mono text-[0.8125rem] text-muted">{reason.code}</code>
           </li>
         ))}
       </ul>

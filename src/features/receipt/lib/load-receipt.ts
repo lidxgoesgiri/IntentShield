@@ -4,6 +4,7 @@ import type { ReceiptStatus } from "@/features/transfer/types";
 import { decodeTransactionMessage, parseSystemTransferData } from "@/features/verification/lib/decode-transaction";
 import { matchTransferShape } from "@/features/verification/lib/transfer-shape";
 import { classifyRpcError, type SolanaRpcPort } from "@/lib/solana/rpc";
+import { checkDevnet } from "@/lib/solana/network";
 import { describeTransactionError } from "@/lib/solana/transaction-errors";
 
 export type DecodedOnChainTransfer = Readonly<{ sender: string; recipient: string; amountLamports: bigint }>;
@@ -49,14 +50,23 @@ export function decodeOnChainTransfer(wireBase64: string): DecodedOnChainTransfe
  */
 export async function loadReceipt(rpc: SolanaRpcPort, signature: string, signal?: AbortSignal): Promise<ReceiptLookup> {
   try {
-    const [status, tx] = await Promise.all([
+    const network = await checkDevnet(rpc, signal);
+    signal?.throwIfAborted();
+    if (!network.ok) return { kind: "unavailable", message: network.message };
+    const [statusResult, txResult] = await Promise.allSettled([
       rpc.getSignatureStatus(signature, { searchTransactionHistory: true }, signal),
       rpc.getTransaction(signature, signal),
     ]);
+    signal?.throwIfAborted();
+    const status = statusResult.status === "fulfilled" ? statusResult.value : null;
+    const tx = txResult.status === "fulfilled" ? txResult.value : null;
+    if (!status && !tx && (statusResult.status === "rejected" || txResult.status === "rejected")) {
+      return { kind: "unavailable", message: "Solana Devnet RPC could not be reached, so the status cannot be shown." };
+    }
     if (!status && !tx) return { kind: "not_found" };
 
     const err = tx?.err ?? status?.err ?? null;
-    const confirmationStatus = status?.confirmationStatus ?? (tx ? "confirmed" : null);
+    const confirmationStatus = status?.confirmationStatus === "finalized" ? "finalized" : tx ? "confirmed" : status?.confirmationStatus ?? null;
     const isConfirmed = confirmationStatus === "confirmed" || confirmationStatus === "finalized";
 
     return {

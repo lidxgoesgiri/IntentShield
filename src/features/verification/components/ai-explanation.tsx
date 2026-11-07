@@ -17,29 +17,38 @@ type ExplainState =
  * Optional AI explanation of a verdict the rule engine already produced
  * (PRD §9.1 #4, S04 "AI Explanation"). Display-only and clearly labeled.
  */
-export function AiExplanation({
-  summary,
-  verdictKey,
-  disabledReason,
-  model,
-  labelFor,
-}: {
+type AiExplanationProps = {
   summary: ExplainRequest;
   verdictKey: string;
   disabledReason: string | null;
   /** Switcher choice; selects who explains, never what the verdict is. */
   model: string | null;
   labelFor: (id: string | null | undefined) => string;
-}) {
-  const [state, setState] = useState<ExplainState>({ status: "idle" });
-  const [forKey, setForKey] = useState(verdictKey);
-  const abort = useRef<AbortController | null>(null);
+};
 
-  // A new verdict invalidates any previous explanation (adjust state during render).
-  if (forKey !== verdictKey) {
-    setForKey(verdictKey);
-    setState({ status: "idle" });
-  }
+export function AiExplanation(props: AiExplanationProps) {
+  // Bind the entire request lifecycle to its exact verdict AND selected model.
+  // Remounting aborts an old request before it can populate the next verdict.
+  return <ExplanationForVerdict key={JSON.stringify([props.verdictKey, props.summary, props.model])} {...props} />;
+}
+
+function deterministicSummary(summary: ExplainRequest): string {
+  if (summary.status === "blocked") return "Verification failed. Signing is disabled because the transaction does not match the approved intent or supported format.";
+  if (summary.status === "unable_to_verify") return "Unable to verify this transaction. Signing is disabled until the required checks can be completed.";
+  if (summary.simulation === "failed") return "The supported fields match, but simulation failed. Signing is disabled.";
+  if (summary.simulation === "unavailable") return "The supported fields match, but simulation is unavailable. Signing is disabled.";
+  if (summary.simulation === "not_run") return "The supported fields match. Signing stays disabled until simulation passes.";
+  return "The supported fields match the approved intent and simulation passed. This does not establish recipient trustworthiness; signing still requires a current wallet and transaction check.";
+}
+
+function ExplanationForVerdict({
+  summary,
+  disabledReason,
+  model,
+  labelFor,
+}: AiExplanationProps) {
+  const [state, setState] = useState<ExplainState>({ status: "idle" });
+  const abort = useRef<AbortController | null>(null);
 
   useEffect(() => () => abort.current?.abort(), []);
 
@@ -80,8 +89,10 @@ export function AiExplanation({
         ) : null}
       </div>
       <div aria-live="polite" className="mt-2 text-[0.925rem] leading-relaxed">
+        <p className="text-white" data-deterministic-summary="">{deterministicSummary(summary)}</p>
         {state.status === "ready" ? (
           <>
+            <p className="mt-3 text-[0.8125rem] text-muted">AI note · untrusted · the rule-based result above is authoritative</p>
             <p className="text-silver">{state.text}</p>
             {state.answeredBy ? (
               <p className="type-caption mt-1">

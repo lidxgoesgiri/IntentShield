@@ -65,6 +65,19 @@ describe("receipt lookup (PRD FR-009, §10.5)", () => {
     expect((await loadReceipt(rpc.port, SIG)).kind).toBe("unavailable");
   });
 
+  it("refuses to label a receipt Devnet when the RPC genesis belongs to another network", async () => {
+    const rpc = createFakeRpc({ genesisHash: "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d", statuses: [{ confirmationStatus: "finalized", err: null, slot: 10n }] });
+    expect(await loadReceipt(rpc.port, SIG)).toMatchObject({ kind: "unavailable", message: expect.stringContaining("not Solana Devnet") });
+    expect(rpc.calls.getSignatureStatus).toBeUndefined();
+    expect(rpc.calls.getTransaction).toBeUndefined();
+  });
+
+  it("can show observed confirmation while optional transaction metadata is temporarily unavailable", async () => {
+    const rpc = createFakeRpc({ statuses: [{ confirmationStatus: "confirmed", err: null, slot: 10n }] });
+    rpc.port.getTransaction = async () => { throw new RpcRequestError("transport", "index unavailable"); };
+    expect(await loadReceipt(rpc.port, SIG)).toMatchObject({ kind: "found", status: "confirmed", feeLamports: null });
+  });
+
   it("builds Devnet-pinned explorer links and rejects malformed signatures", () => {
     expect(explorerTransactionUrl(SIG)).toBe(`https://explorer.solana.com/tx/${SIG}?cluster=devnet`);
     expect(explorerTransactionUrl("abc")).toBeNull();

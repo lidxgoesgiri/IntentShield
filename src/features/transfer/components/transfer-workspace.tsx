@@ -13,6 +13,7 @@ import { ManualTransferFields } from "@/features/intent/components/manual-transf
 import { validateDraft } from "@/features/intent/lib/intent-validation";
 import type { ExplainRequest } from "@/features/intent/schema";
 import { ReceiptCard } from "@/features/receipt/components/receipt-card";
+import { TransactionRecovery } from "@/features/receipt/components/transaction-recovery";
 import { AiExplanation } from "@/features/verification/components/ai-explanation";
 import { TransactionInspector } from "@/features/verification/components/transaction-inspector";
 import { formatLamportsAsSol } from "@/lib/format/sol";
@@ -50,7 +51,7 @@ function PanelHeading({ index, title, children }: { index: string; title: string
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-3">
       <h2 className="flex items-baseline gap-3 font-heading text-xl font-semibold tracking-[-0.01em] text-white">
-        <span className="font-mono text-[0.8rem] text-mint">{index}</span>
+        <span className="font-mono text-[0.8125rem] text-mint">{index}</span>
         {title}
       </h2>
       {children}
@@ -115,7 +116,7 @@ export function TransferWorkspace() {
     <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">
       {/* Left: describe + review (5/12) */}
       <div className="min-w-0 space-y-6 lg:col-span-5">
-        <section className="hairline-panel space-y-5 p-5 sm:p-6" aria-label="Describe">
+        <section className="hairline-panel panel-space space-y-5" aria-label="Describe">
           <PanelHeading index="01" title="Describe">
             <ActiveModelBadge ai={ai} />
           </PanelHeading>
@@ -135,7 +136,7 @@ export function TransferWorkspace() {
           />
         </section>
 
-        <section className="hairline-panel space-y-6 p-5 sm:p-6" aria-label="Review">
+        <section className="hairline-panel panel-space space-y-6" aria-label="Review">
           <PanelHeading index="02" title="Review" />
           <ManualTransferFields
             amountSol={state.draft.amountSol}
@@ -162,11 +163,12 @@ export function TransferWorkspace() {
       </div>
 
       {/* Right: verify, sign, confirm (7/12) */}
-      <section className="hairline-panel min-w-0 space-y-6 p-5 sm:p-6 lg:col-span-7" aria-label="Verify, sign and confirm">
+      <section className="hairline-panel panel-space min-w-0 space-y-6 lg:col-span-7" aria-label="Verify, sign and confirm">
         <PanelHeading index="03" title="Verify · Sign · Confirm">
           <span className="type-caption">Real Devnet RPC</span>
         </PanelHeading>
         <TransactionStepper status={state.status} />
+        <TransactionRecovery currentSignature={state.receipt?.signature} />
 
         <p aria-live="polite" className="flex items-start gap-2 text-[0.95rem] text-white">
           {working || state.status === "AWAITING_WALLET" || state.status === "CONFIRMING" || state.status === "SUBMITTED" ? (
@@ -184,7 +186,9 @@ export function TransferWorkspace() {
           </Alert>
         ) : null}
         {devnet.state === "wrong-network" || devnet.state === "unavailable" || devnet.state === "misconfigured" ? (
-          <Alert tone="danger" role="alert" title="Network not verified as Solana Devnet">
+          <Alert tone="danger" role="alert" title="Network not verified as Solana Devnet" action={devnet.state !== "misconfigured" ? (
+            <Button variant="secondary" size="sm" onClick={actions.recheckDevnet} disabled={!online}>Retry network check</Button>
+          ) : undefined}>
             {devnet.message}
           </Alert>
         ) : null}
@@ -199,7 +203,7 @@ export function TransferWorkspace() {
         {stopAlert ? (
           <Alert tone="danger" role="alert" title={stopAlert.title}>
             {stopAlert.message}{" "}
-            <code className="font-mono text-[0.75rem] text-muted">{stopAlert.code}</code>
+            <code className="font-mono text-[0.8125rem] text-muted">{stopAlert.code}</code>
           </Alert>
         ) : null}
 
@@ -270,6 +274,7 @@ export function TransferWorkspace() {
               sender: state.receipt.sender,
               recipient: state.receipt.recipient,
               feeLamports: state.receipt.feeLamports,
+              estimatedFeeLamports: state.receipt.estimatedFeeLamports,
               blockTime: state.receipt.blockTime,
               slot: state.receipt.slot,
               confirmationStatus: state.receipt.confirmationStatus,

@@ -6,9 +6,9 @@ import { SectionHeader } from "./section-header";
 export function SimulatorSection() {
   return (
     <section id="simulator" data-atmosphere="0.22" aria-labelledby="simulator-title" className="border-t border-hairline bg-carbon/30">
-      <div className="page-container py-[clamp(64px,11vw,168px)]">
+      <div className="page-container section-space">
         <SectionHeader index="03" eyebrow="Interactive simulator" title={SIMULATOR_COPY.title} titleId="simulator-title" lead={SIMULATOR_COPY.lead} split="lines" />
-        <div className="mt-14 lg:mt-20">
+        <div className="mt-8 lg:mt-12">
           <InteractiveSimulator />
         </div>
       </div>

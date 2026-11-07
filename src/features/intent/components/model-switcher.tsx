@@ -2,6 +2,7 @@
 
 import { Bot, Check, ChevronDown } from "lucide-react";
 import { Select } from "radix-ui";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AiModelOption, AiModelsState } from "../hooks/use-ai-models";
 
@@ -25,7 +26,7 @@ function ProviderMark({ provider, active = false }: { provider: string; active?:
     <span
       aria-hidden
       className={cn(
-        "grid size-9 shrink-0 place-items-center rounded-[8px] border font-mono text-[0.68rem] font-semibold tracking-[0.06em]",
+        "grid size-8 shrink-0 place-items-center rounded-[8px] border font-mono text-[0.8125rem] font-medium",
         active ? "border-mint/40 bg-mint/10 text-mint" : "border-hairline bg-obsidian text-silver",
       )}
     >
@@ -67,18 +68,18 @@ export function ModelSwitcher({ ai, disabled }: { ai: AiModelsState; disabled: b
           AI model
         </label>
         {ready ? (
-          <span className="type-meta normal-case tracking-[0.04em]">
+          <span className="text-[0.8125rem] text-muted">
             {ai.models.length} available{defaultOption ? ` · default: ${displayOf(defaultOption).name}` : ""}
           </span>
         ) : null}
       </div>
 
-      <Select.Root value={ai.selectedModel ?? undefined} onValueChange={ai.select} disabled={disabled || !ready}>
+      <Select.Root value={ai.selectedModel ?? ""} onValueChange={ai.select} disabled={disabled || !ready}>
         <Select.Trigger
           id="ai-model"
           aria-describedby="ai-model-hint"
           className={cn(
-            "model-trigger group flex min-h-14 w-full items-center gap-3 rounded-[12px] border border-hairline bg-obsidian/70 px-3 py-2.5 text-left",
+            "model-trigger group flex min-h-13 w-full items-center gap-3 rounded-[var(--radius-control)] border border-control bg-obsidian/70 px-3 py-2 text-left",
             "transition-[border-color,background-color] duration-200 hover:border-silver/35 hover:bg-obsidian",
             "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mint",
             "data-[state=open]:border-mint/45 disabled:cursor-not-allowed disabled:opacity-60",
@@ -89,11 +90,11 @@ export function ModelSwitcher({ ai, disabled }: { ai: AiModelsState; disabled: b
             <Select.Value placeholder={placeholder}>
               {selectedDisplay ? (
                 <span className="block min-w-0">
-                  <span className="block truncate text-[0.95rem] font-medium text-white" title={selectedDisplay.name}>
+                  <span className="block truncate text-[0.9375rem] font-medium text-white" title={selectedDisplay.name}>
                     {selectedDisplay.name}
                   </span>
-                  <span className="mt-0.5 block truncate font-mono text-[0.6875rem] tracking-[0.04em] text-muted">
-                    {metaLine(selectedDisplay, Boolean(selected?.isDefault))}
+                  <span className="block truncate text-[0.8125rem] text-muted">
+                    {[selectedDisplay.provider, selected?.isDefault ? "default" : null].filter(Boolean).join(" · ")}
                   </span>
                 </span>
               ) : null}
@@ -115,12 +116,12 @@ export function ModelSwitcher({ ai, disabled }: { ai: AiModelsState; disabled: b
             sideOffset={8}
             collisionPadding={16}
             className={cn(
-              "model-menu z-50 w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-32px)] overflow-hidden rounded-[14px] border border-hairline",
-              "bg-carbon/95 shadow-[0_28px_70px_-24px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl",
+              "model-menu z-50 w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-32px)] overflow-hidden rounded-[var(--radius-panel)] border border-hairline",
+              "bg-carbon shadow-[var(--shadow-overlay)]",
             )}
             style={{ maxHeight: "min(420px, var(--radix-select-content-available-height))" }}
           >
-            <p className="type-meta border-b border-hairline px-4 py-2.5">Drafts &amp; explanations · untrusted</p>
+            <p className="border-b border-hairline px-4 py-2.5 text-[0.8125rem] text-muted">Drafts &amp; explanations · untrusted</p>
             <Select.Viewport className="p-1.5">
               {ai.models.map((model) => {
                 const display = displayOf(model);
@@ -139,7 +140,7 @@ export function ModelSwitcher({ ai, disabled }: { ai: AiModelsState; disabled: b
                       <Select.ItemText>
                         <span className="block text-[0.925rem] font-medium leading-snug text-white">{display.name}</span>
                       </Select.ItemText>
-                      <span className="mt-0.5 block font-mono text-[0.6875rem] leading-snug tracking-[0.04em] text-muted">
+                      <span className="mt-0.5 block text-[0.8125rem] leading-snug text-muted">
                         {metaLine(display, model.isDefault)}
                       </span>
                     </span>
@@ -154,9 +155,17 @@ export function ModelSwitcher({ ai, disabled }: { ai: AiModelsState; disabled: b
         </Select.Portal>
       </Select.Root>
 
-      <p id="ai-model-hint" className="type-caption">
-        Changes only who drafts and explains — that output stays untrusted. Approval, verification, simulation and signing are
-        deterministic and unaffected. Requests go to the selected model via OpenRouter; never include seed phrases or private keys.
+      {ai.status === "unknown" ? (
+        <div role="status" className="rounded-[var(--radius-control)] border border-warning/40 px-3 py-2 text-[0.8125rem] text-warning">
+          <p>Model list unavailable. Drafting can still use the server default; manual entry remains available.</p>
+          <Button variant="ghost" size="sm" className="mt-1 text-warning" onClick={ai.retry} disabled={disabled}>
+            Retry model list
+          </Button>
+        </div>
+      ) : null}
+
+      <p id="ai-model-hint" className="text-[0.8125rem] leading-relaxed text-muted">
+        Untrusted drafts and explanations via OpenRouter. Rules control signing. Never include seed phrases or private keys.
       </p>
     </div>
   );
@@ -165,7 +174,8 @@ export function ModelSwitcher({ ai, disabled }: { ai: AiModelsState; disabled: b
 /** Active-model indicator for the panel header (a status line, not a pill). */
 export function ActiveModelBadge({ ai }: { ai: AiModelsState }) {
   const off = ai.status === "off";
-  const label = off ? "AI off · manual entry" : ai.status === "loading" ? "Loading AI models…" : ai.labelFor(ai.selectedModel);
+  const ready = ai.status === "ready";
+  const label = off ? "AI off · manual entry" : ai.status === "loading" ? "Loading AI models…" : ai.status === "unknown" ? "using server default" : ai.labelFor(ai.selectedModel);
   const selected = ai.models.find((model) => model.id === ai.selectedModel);
   const shortName = selected ? displayOf(selected).name : label;
   return (
@@ -174,11 +184,11 @@ export function ActiveModelBadge({ ai }: { ai: AiModelsState }) {
       aria-label={off ? "AI drafting is off" : `Active AI model: ${label}`}
       title={ai.selectedModel ?? undefined}
       className={cn(
-        "inline-flex min-w-0 max-w-full items-center gap-2 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.14em]",
-        off ? "text-muted" : "text-mint",
+        "inline-flex min-w-0 max-w-full items-center gap-2 text-[0.8125rem] font-medium",
+        ready ? "text-mint" : "text-muted",
       )}
     >
-      <span aria-hidden className={cn("model-live-dot size-1.5 shrink-0 rounded-full", off ? "bg-muted" : "bg-mint")} data-live={off ? "false" : "true"} />
+      <span aria-hidden className={cn("model-live-dot size-1.5 shrink-0 rounded-full", ready ? "bg-mint" : "bg-muted")} data-live={ready ? "true" : "false"} />
       <span className="truncate">{off ? label : `AI · ${shortName}`}</span>
     </span>
   );

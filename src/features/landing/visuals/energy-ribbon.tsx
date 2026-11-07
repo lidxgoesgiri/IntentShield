@@ -8,13 +8,13 @@ const DESKTOP_PATH =
 const MOBILE_PATH = "M24 0 C24 40 24 60 24 96 C24 140 34 170 24 210 C16 250 24 300 24 340 C24 380 30 410 24 450 L24 520";
 
 export const HOW_NODES_DESKTOP = [
-  { id: "simulation", x: 200, y: 64 },
-  { id: "validation", x: 600, y: 64 },
+  { id: "validation", x: 200, y: 64 },
+  { id: "simulation", x: 600, y: 64 },
   { id: "explanation", x: 1000, y: 64 },
 ] as const;
 
 /**
- * The S04 ribbon: simulation → validation → AI explanation. Nodes are
+ * The S04 ribbon: validation → simulation → AI explanation. Nodes are
  * labeled in the DOM next to the steps; this SVG is purely decorative.
  */
 export function EnergyRibbon() {

@@ -21,7 +21,7 @@ export function ProductNav({ className }: { className?: string }) {
             href={link.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "inline-flex min-h-11 items-center rounded-[var(--radius-control)] px-3 text-[0.925rem] transition-colors",
+              "inline-flex min-h-11 items-center rounded-[var(--radius-control)] px-2 text-[0.925rem] transition-colors sm:px-3",
               active ? "bg-raised text-white" : "text-silver hover:text-white",
             )}
           >

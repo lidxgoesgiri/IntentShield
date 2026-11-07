@@ -6,7 +6,7 @@ export const HERO_COPY = {
   eyebrow: "IntentShield / Solana Devnet",
   title: ["Know what", "you sign."],
   subtitle: "See the transaction. Before you approve it.",
-  body: "Describe a SOL transfer, inspect the exact supported transaction fields, and confirm what your wallet is being asked to sign.",
+  body: "Describe a SOL transfer. Compare what you approved with the exact message your wallet will sign.",
   primaryCta: "Launch IntentShield",
   secondaryCta: "Explore the Simulator",
   trust: [
@@ -27,7 +27,7 @@ export const HERO_COPY = {
 
 export const PROBLEM_COPY = {
   title: "A signature should never be a guessing game.",
-  lead: "Wallet prompts show raw transaction data that is easy to skim and hard to understand. A single changed digit or character is enough to move funds somewhere you never meant.",
+  lead: "One changed digit or address character can send funds somewhere you never meant. Inspect the difference before signing.",
   caveat: "Intent matching does not establish whether a recipient is trustworthy.",
 } as const;
 
@@ -39,21 +39,21 @@ export const SIMULATOR_COPY = {
 
 export const HOW_COPY = {
   title: "Intelligence before approval.",
-  lead: "Three stages narrate what happens between your approval and your wallet's signature prompt.",
+  lead: "Verify the message, simulate its execution, then ask for an explanation. Every gate runs before your wallet opens.",
   steps: [
     {
-      id: "simulation",
+      id: "validation",
       index: "01",
-      title: "Simulation",
-      body: "The exact unsigned message is executed against Solana Devnet RPC. An error, an unreadable answer, or an unreachable RPC blocks signing.",
-      limit: "Simulation predicts this run; it cannot vouch for the recipient.",
+      title: "Deterministic Validation",
+      body: "Decode the final message and compare sender, recipient, lamports, program, fee payer and allowed instructions with your approval.",
+      limit: "Rules decide whether signing can unlock.",
     },
     {
-      id: "validation",
+      id: "simulation",
       index: "02",
-      title: "Deterministic Validation",
-      body: "The final message is decoded and compared field by field with your approved intent: program, source, fee payer, recipient, lamports, network, one transfer instruction.",
-      limit: "The rule engine — not a model — decides whether signing unlocks.",
+      title: "Simulation",
+      body: "Execute the same unsigned bytes against Solana Devnet. Errors, malformed responses and an unreachable RPC keep signing locked.",
+      limit: "Simulation does not establish recipient trust.",
     },
     {
       id: "explanation",

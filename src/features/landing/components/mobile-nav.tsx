@@ -44,7 +44,7 @@ export function MobileNav({ repositoryUrl }: { repositoryUrl: string | null }) {
         id={panelId}
         ref={panelRef}
         hidden={!open}
-        className="absolute inset-x-0 top-full border-b border-hairline bg-obsidian/97 backdrop-blur-md"
+        className="absolute inset-x-0 top-full border-b border-hairline bg-obsidian shadow-[var(--shadow-overlay)]"
       >
         <nav aria-label="Mobile" className="page-container flex flex-col py-3">
           {HEADER_ANCHORS.map((link) => (

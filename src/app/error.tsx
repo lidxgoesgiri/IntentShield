@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { TransactionRecovery } from "@/features/receipt/components/transaction-recovery";
 
 /**
  * Route error boundary. Shows a calm, sanitized message — never stack traces —
@@ -11,7 +12,9 @@ export default function ErrorBoundary({ reset }: { error: Error & { digest?: str
   return (
     <main id="main" className="page-container flex min-h-[70dvh] flex-col items-start justify-center gap-6 py-20">
       <p className="type-eyebrow">Something went wrong</p>
-      <h1 className="type-h3 max-w-2xl">This view failed to load. No transaction was signed or sent because of this error.</h1>
+      <h1 className="page-title max-w-2xl">This view could not be displayed.</h1>
+      <p className="max-w-2xl text-silver">This error does not establish whether a wallet request or transaction completed. If you already approved a request in your wallet, check its transaction history or receipt before sending again.</p>
+      <TransactionRecovery />
       <div className="flex flex-wrap gap-3">
         <Button onClick={reset}>Try again</Button>
         <Button asChild variant="secondary">

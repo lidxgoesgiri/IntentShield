@@ -34,7 +34,7 @@ export type ButtonProps = ComponentPropsWithoutRef<"button"> & {
 export function buttonClassName(variant: Variant = "primary", size: Size = "md", className?: string) {
   return cn(
     "inline-flex select-none items-center justify-center rounded-[var(--radius-control)] font-medium tracking-[-0.005em]",
-    "transition-[background-color,border-color,color,transform] duration-150 ease-out active:translate-y-px",
+    "transition-[background-color,border-color,color,transform] duration-[var(--duration-fast)] ease-out active:translate-y-px",
     "focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-mint",
     "disabled:pointer-events-auto disabled:translate-y-0",
     VARIANTS[variant],

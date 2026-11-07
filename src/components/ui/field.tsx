@@ -53,7 +53,7 @@ export function describedBy(id: string, hasError: boolean, hasHint: boolean): st
 export function Input({ className, invalid, ...props }: ComponentPropsWithoutRef<"input"> & { invalid?: boolean }) {
   return (
     <input
-      className={cn(CONTROL, "min-h-12", invalid ? "border-danger/70" : "border-hairline hover:border-silver/40", className)}
+      className={cn(CONTROL, "min-h-12", invalid ? "border-danger" : "border-control hover:border-silver/70", className)}
       aria-invalid={invalid || undefined}
       {...props}
     />
@@ -63,7 +63,7 @@ export function Input({ className, invalid, ...props }: ComponentPropsWithoutRef
 export function Textarea({ className, invalid, ...props }: ComponentPropsWithoutRef<"textarea"> & { invalid?: boolean }) {
   return (
     <textarea
-      className={cn(CONTROL, "py-3 leading-relaxed", invalid ? "border-danger/70" : "border-hairline hover:border-silver/40", className)}
+      className={cn(CONTROL, "py-3 leading-relaxed", invalid ? "border-danger" : "border-control hover:border-silver/70", className)}
       aria-invalid={invalid || undefined}
       {...props}
     />

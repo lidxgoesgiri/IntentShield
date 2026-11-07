@@ -36,6 +36,9 @@ export type TransactionReceipt = Readonly<{
   error: string | null;
   /** Unix seconds from getTransaction, when available. */
   blockTime: bigint | null;
+  /** Pre-sign RPC estimate for the reviewed message; not an observed charge. */
+  estimatedFeeLamports?: bigint | null;
+  /** Actual charged fee from getTransaction.meta.fee, when available. */
   feeLamports: bigint | null;
 }>;
 

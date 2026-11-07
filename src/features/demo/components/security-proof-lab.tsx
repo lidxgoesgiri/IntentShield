@@ -91,7 +91,7 @@ export function SecurityProofLab() {
             </div>
           </dl>
           <div className="rounded-[var(--radius-control)] border border-dashed border-hairline p-3">
-            <p className="type-eyebrow text-[0.7rem]">What changed</p>
+            <p className="type-eyebrow text-[0.8125rem]">What changed</p>
             <p className="mt-1 text-[0.9rem] text-silver">{run.scenario.tamper}</p>
           </div>
           <p className="type-caption">
@@ -99,8 +99,8 @@ export function SecurityProofLab() {
           </p>
         </section>
 
-        <section aria-label="Verifier result" className="hairline-panel space-y-5 p-5 lg:col-span-8" aria-live="polite">
-          <TransactionInspector result={run.result} messageBytes={run.messageBytes} />
+        <section aria-label="Verifier result" className="hairline-panel panel-space space-y-5 lg:col-span-8" aria-live="polite">
+          <div key={selected} className="status-transition"><TransactionInspector result={run.result} messageBytes={run.messageBytes} /></div>
 
           <div className="space-y-2 rounded-[var(--radius-control)] border border-hairline bg-obsidian/50 p-4">
             <Button size="lg" className="w-full" disabled aria-describedby="lab-sign-note">

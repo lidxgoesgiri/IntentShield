@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { MOTION_CONDITIONS } from "../motion/motion-preferences";
+import { useDecorativeMotion } from "../motion/motion-context";
 
 type Drop = {
   x: number;
@@ -65,19 +66,21 @@ function createDrop(width: number, height: number, random: () => number, anywher
  */
 export function AtmosphericRain() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const { enabled } = useDecorativeMotion();
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const context = canvas?.getContext("2d", { alpha: true });
     if (!canvas || !context) return;
 
-    const reduced = !window.matchMedia(MOTION_CONDITIONS.motion).matches;
+    const reduced = !enabled;
     const random = reduced ? mulberry32(7) : Math.random;
     let width = 0;
     let height = 0;
     let drops: Drop[] = [];
     let raf = 0;
     let last = 0;
+    let lastPaint = 0;
     let intensity = 1;
     let targetIntensity = 1;
 
@@ -89,7 +92,7 @@ export function AtmosphericRain() {
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
       context.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const target = Math.round(Math.min(desktop ? 190 : 80, Math.max(36, (width * height) / (desktop ? 6800 : 9500))));
+      const target = Math.round(Math.min(desktop ? 130 : 48, Math.max(24, (width * height) / (desktop ? 8500 : 12500))));
       drops = Array.from({ length: target }, () => createDrop(width, height, random, true));
     };
 
@@ -121,6 +124,9 @@ export function AtmosphericRain() {
     const step = (now: number) => {
       raf = 0;
       if (document.hidden) return;
+      // Decorative rain needs at most 30 paints/sec, including high-refresh displays.
+      if (now - lastPaint < 33) { raf = requestAnimationFrame(step); return; }
+      lastPaint = now;
       const dt = Math.min(0.05, last ? (now - last) / 1000 : 0.016);
       last = now;
       intensity += (targetIntensity - intensity) * Math.min(1, dt * 2.5);
@@ -159,12 +165,11 @@ export function AtmosphericRain() {
         if (reduced) draw();
       }, 150);
     };
-    let scrollQueued = false;
+    let scrollFrame = 0;
     const onScroll = () => {
-      if (scrollQueued) return;
-      scrollQueued = true;
-      requestAnimationFrame(() => {
-        scrollQueued = false;
+      if (scrollFrame) return;
+      scrollFrame = requestAnimationFrame(() => {
+        scrollFrame = 0;
         readTargetIntensity();
         if (reduced) {
           intensity = targetIntensity * 0.8;
@@ -181,12 +186,13 @@ export function AtmosphericRain() {
 
     return () => {
       if (raf) cancelAnimationFrame(raf);
+      if (scrollFrame) cancelAnimationFrame(scrollFrame);
       window.clearTimeout(resizeTimer);
       window.removeEventListener("resize", onResize);
       window.removeEventListener("scroll", onScroll);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, []);
+  }, [enabled]);
 
   return <canvas ref={canvasRef} className="atmospheric-rain" aria-hidden="true" />;
 }

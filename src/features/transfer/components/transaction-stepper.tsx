@@ -24,7 +24,7 @@ export function TransactionStepper({ status }: { status: TransferStatus }) {
             />
             <p
               className={cn(
-                "mt-2 flex items-center gap-1 truncate font-mono text-[0.7rem] uppercase tracking-[0.08em] sm:text-[0.75rem]",
+                "mt-2 flex items-center gap-1 truncate font-mono text-[0.8125rem] uppercase tracking-[0.08em] sm:text-[0.8125rem]",
                 complete ? "text-mint" : current ? (problem ? "text-warning" : "text-white") : "text-muted",
               )}
             >

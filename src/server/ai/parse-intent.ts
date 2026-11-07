@@ -78,6 +78,7 @@ async function runWithModelFallback<T>(
           meta: { model, requestedModel: plan.requestedModel, fallbackUsed: model !== plan.requestedModel },
         };
       }
+      options.health?.markFailure(model);
       lastError = new AiInvalidOutputError();
     } catch (error) {
       if (options.signal?.aborted) throw error;
@@ -132,8 +133,8 @@ export async function parseIntentWithAi(
   return { result: value, meta };
 }
 
-const ABSOLUTE_CLAIMS = /(100\s*%|guarantee|risk[-\s]?free|completely safe|fully secure|totally safe|scam[-\s]?proof)/i;
-const SIGN_ENCOURAGEMENT = /(safe to sign|go ahead and sign|you (?:can|should) sign|ok to sign|okay to sign)/i;
+const ABSOLUTE_CLAIMS = /(100\s*%|guarantee|risk[-\s]?free|\b(?:safe|secure)\b|scam[-\s]?proof|\baman\b|tanpa risiko)/i;
+const SIGN_ENCOURAGEMENT = /(?:\b(?:sign|signature|signing)\b.{0,40}\b(?:proceed|approve|continue|allowed|enabled)\b|\b(?:proceed|approve|continue|can|should|may|go ahead|ok|okay)\b.{0,40}\b(?:sign|signature|signing)\b|silakan.{0,40}(?:tanda tangan|sign))/i;
 
 /**
  * Optional plain-language explanation of a deterministic verdict. Output that
@@ -172,7 +173,7 @@ export async function explainVerificationWithAi(
     const explanation = sanitizeExplanation(parsed.data.explanation, "", 600);
     if (!explanation) return null;
     if (ABSOLUTE_CLAIMS.test(explanation)) return null;
-    if (input.status !== "matched" && SIGN_ENCOURAGEMENT.test(explanation)) return null;
+    if ((input.status !== "matched" || input.simulation !== "passed") && SIGN_ENCOURAGEMENT.test(explanation)) return null;
     return explanation;
   });
   return { explanation: value, meta };

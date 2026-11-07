@@ -130,12 +130,17 @@ describe("POST /api/ai/parse-intent with model selection", () => {
     expect((await response.json()).meta).toMatchObject({ model: "a/one", fallbackUsed: true });
   });
 
-  it("invalid JSON from the selected model: the fallback is the single retry", async () => {
-    const { fetchImpl, calls } = provider({ "b/two": [completion("not json at all")], "a/one": [completion(draft())] });
-    const handlers = createAiHandlers({ getConfig: () => config(), fetchImpl, health: createModelHealth() });
+  it.each(["not json at all", JSON.stringify({ unexpected: true })])("invalid output cools the selected model down (%s)", async (invalid) => {
+    const health = createModelHealth();
+    const { fetchImpl, calls } = provider({ "b/two": [completion(invalid)], "a/one": [completion(draft()), completion(draft())] });
+    const handlers = createAiHandlers({ getConfig: () => config(), fetchImpl, health });
     const response = await handlers.parseIntent(post("/api/ai/parse-intent", { text: TEXT, model: "b/two" }));
     expect(response.status).toBe(200);
     expect(calls).toHaveLength(2);
+    expect(health.isCooling("b/two")).toBe(true);
+    const next = await handlers.parseIntent(post("/api/ai/parse-intent", { text: TEXT, model: "b/two" }));
+    expect(next.status).toBe(200);
+    expect(calls.map((call) => call.model)).toEqual(["b/two", "a/one", "a/one"]);
   });
 
   it("when every attempt fails → 503 and the manual flow; the key never leaks", async () => {

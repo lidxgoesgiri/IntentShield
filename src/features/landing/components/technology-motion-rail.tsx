@@ -2,6 +2,7 @@
 
 import { Pause, Play } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
+import { useDecorativeMotion } from "../motion/motion-context";
 import { InfiniteMarqueeTrack, type MarqueeTrackController } from "../rail/infinite-marquee-track";
 import { RAIL_CAPABILITIES } from "../rail/rail-config";
 import { TECH_MARKS } from "../rail/tech-marks";
@@ -20,7 +21,7 @@ export function TechnologyMotionRail() {
   const upperRef = useRef<MarqueeTrackController | null>(null);
   const lowerRef = useRef<MarqueeTrackController | null>(null);
   const pausedRef = useRef(false);
-  const [paused, setPaused] = useState(false);
+  const { enabled, paused, togglePaused } = useDecorativeMotion();
   const [revision, setRevision] = useState(0);
 
   const sync = useCallback(() => {
@@ -45,12 +46,7 @@ export function TechnologyMotionRail() {
     [sync],
   );
 
-  useMotionRail(sectionRef, controllersRef, pausedRef, revision);
-
-  const togglePaused = () => {
-    pausedRef.current = !pausedRef.current;
-    setPaused(pausedRef.current);
-  };
+  useMotionRail(sectionRef, controllersRef, pausedRef, revision, enabled);
 
   return (
     <section
@@ -62,7 +58,7 @@ export function TechnologyMotionRail() {
     >
       <div aria-hidden className="landing-ambient rail-light absolute inset-0" />
 
-      <div className="page-container relative pt-[clamp(72px,10vw,152px)]" data-rail-head="">
+      <div className="page-container relative pt-[var(--section-space)]" data-rail-head="">
         <div className="flex items-center justify-between gap-6 border-b border-hairline/70 pb-4">
           <p className="type-eyebrow flex min-w-0 items-center gap-3 whitespace-nowrap">
             <span className="text-mint">Interlude</span>
@@ -74,7 +70,7 @@ export function TechnologyMotionRail() {
             onClick={togglePaused}
             aria-pressed={paused}
             aria-label={paused ? "Resume motion" : "Pause motion"}
-            className="rail-pause inline-flex shrink-0 whitespace-nowrap min-h-11 items-center gap-2 rounded-[var(--radius-control)] px-2 font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-silver transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mint"
+            className="rail-pause inline-flex shrink-0 whitespace-nowrap min-h-11 items-center gap-2 rounded-[var(--radius-control)] px-2 font-mono text-[0.8125rem] uppercase tracking-[0.14em] text-silver transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mint"
           >
             {paused ? <Play className="size-3.5" aria-hidden /> : <Pause className="size-3.5" aria-hidden />}
             <span>{paused ? "Resume" : "Pause"}</span>
@@ -92,13 +88,12 @@ export function TechnologyMotionRail() {
         <div className="mt-10 grid gap-6 lg:grid-cols-12" data-reveal="slide">
           <p className="type-meta lg:col-span-4">Built with · runs on every transfer</p>
           <p className="type-lead lg:col-span-6 lg:col-start-7">
-            The stack this build actually runs on, and the checks it performs before any wallet prompt. Nothing listed here
-            is a roadmap item or a partner.
+            The tools behind this build and its pre-signature checks. Technology labels, not partnerships.
           </p>
         </div>
       </div>
 
-      <div className="rail-stage relative mt-[clamp(44px,6vw,88px)] pb-[clamp(80px,11vw,168px)]">
+      <div className="rail-stage relative mt-8 pb-[var(--section-space)] lg:mt-12">
         <div className="rail-row rail-row-upper" data-rail-row="upper">
           <p className="rail-row-label type-meta page-container" aria-hidden>
             <span className="text-mint">01</span> — Built with

@@ -58,7 +58,7 @@ flowchart LR
 
 | Route | Purpose |
 |---|---|
-| `/` | Eight-section landing (hero, problem, simulator, how it works, product, security, developers, final CTA) |
+| `/` | Eight-section landing (hero, problem, simulator, how it works, product, security, developers, final CTA), plus a technology-ribbon interlude |
 | `/app` | Real Devnet workspace: wallet, composer, approval, inspector, simulation, signing, receipt |
 | `/app/demo` | Demo Lab — controlled mismatches through the production verifier (never signs) |
 | `/tx/[signature]` | Receipt read from Devnet RPC; "Confirmed" only with RPC evidence |
@@ -71,7 +71,7 @@ Key modules: `src/features/verification/lib/verify-native-sol-transfer.ts` (pure
 
 ## Tech stack
 
-Next.js 16 (App Router, Turbopack) · React 19 · TypeScript 6 (strict) · `@solana/kit` 8 · `@solana-program/system` · `@solana/kit-plugin-wallet` (Wallet Standard) · Tailwind CSS 4 · Radix UI · Zod 4 · GSAP 3 + ScrollTrigger + SplitText (landing only, lazy, reduced-motion aware) · Vitest 5 + Testing Library · Playwright 1.65 + axe-core.
+Next.js 16 (App Router; Webpack production build, Turbopack development) · React 19 · TypeScript 6 (strict) · `@solana/kit` 8 · `@solana-program/system` · `@solana/kit-plugin-wallet` (Wallet Standard) · Tailwind CSS 4 · Radix UI · Zod 4 · GSAP 3 + ScrollTrigger + SplitText (landing only, lazy, reduced-motion aware) · Vitest 5 + Testing Library · Playwright 1.65 + axe-core.
 
 ## Getting started
 
@@ -92,8 +92,8 @@ To use the real workflow you need a Wallet Standard Solana wallet (Phantom, Solf
 | `NEXT_PUBLIC_SOLANA_RPC_URL` | public | Devnet RPC (https). The app verifies its genesis hash. |
 | `NEXT_PUBLIC_SOLANA_CLUSTER` | public | Must be `devnet`; anything else fails validation. |
 | `NEXT_PUBLIC_APP_URL` | public | Used for metadata. |
-| `NEXT_PUBLIC_REPOSITORY_URL` / `NEXT_PUBLIC_DOCS_URL` | public | Links render only when set. |
-| `NEXT_PUBLIC_PROOF_SIGNATURE` | public | Optional verified Devnet signature to link from the landing. |
+| `NEXT_PUBLIC_REPOSITORY_URL` / `NEXT_PUBLIC_DOCS_URL` | public | Repository link and optional docs URL. With a repository configured, docs default to its README. |
+| `NEXT_PUBLIC_PROOF_SIGNATURE` | public | Optional override for the historical verified Devnet signature linked from the landing. |
 | `OPENROUTER_API_KEY` | **server only** | Without it the AI routes answer `503 AI_UNAVAILABLE` and the manual flow is used. |
 | `OPENROUTER_MODEL` | **server only** | Default model (`provider/model[:variant]`); may be a comma-separated list whose first entry is the default. |
 | `OPENROUTER_MODELS` | **server only** | Optional extra selectable models (comma-separated). Malformed ids are dropped; ids outside the allowlist are rejected with `400`. |
@@ -110,18 +110,28 @@ Never put secrets in `NEXT_PUBLIC_*` variables.
 | `npm run typecheck` | `next typegen && tsc --noEmit` (typed routes) |
 | `npm test` | Vitest unit + integration suites |
 | `npm run test:e2e` | Playwright against a production build (test wallet + mocked Devnet RPC) |
-| `npm run build` | Production build |
-| `npm run smoke:devnet` | Live Devnet run of the production pipeline with a disposable test key (see below) |
+| `npm run build` | Production build using `next build --webpack` |
+| `npm run smoke:devnet` | Opt-in live Devnet pipeline that signs and broadcasts with a disposable test key; requires explicit authorization (see below) |
+
+The production build explicitly uses Webpack because Turbopack's PostCSS child-process IPC repeatedly failed in the local audit environment. This is an environment-specific build workaround, not evidence of a CSS defect or a claim that Turbopack itself has been repaired.
+
+Playwright normally uses its pinned Chromium browser. For local QA with an installed Chrome, PowerShell users may run `$env:E2E_BROWSER_CHANNEL='chrome'; npm run test:e2e`. `E2E_SKIP_BUILD=1` is only appropriate after building the current source. Tests use a test wallet and mocked RPC responses; they do not request a real wallet signature or spend funds.
 
 ### Live Devnet smoke test
 
-`npm run smoke:devnet` runs the same production modules against real Devnet: Devnet guard → build → verify → preflight → simulate → sign boundary → single broadcast → confirmation → re-verification of the on-chain bytes, plus a negative control (amount ×8 must be blocked). The sender is a disposable test-only key stored in `.devnet/` (git-ignored). The public RPC airdrop is currently disabled (HTTP 410), so fund the printed address at https://faucet.solana.com and rerun. Evidence is written to `artifacts/` (git-ignored).
+`npm run smoke:devnet` runs the same production modules against real Devnet: Devnet guard → build → verify → preflight → simulate → sign boundary → single broadcast → confirmation → re-verification of the on-chain bytes, plus a negative control (amount ×8 must be blocked). The sender is a disposable test-only key stored in `.devnet/` (git-ignored). This command **creates a blockchain transaction**: run it only with the wallet owner's explicit approval. A previous smoke attempt stopped at a public RPC airdrop HTTP 410; this historical failure is separate from the verified transaction below. Evidence is written to `artifacts/` (git-ignored).
 
 ## Testing summary
 
-Latest local run (7 Nov 2026): `npm run lint` 0 errors · `npm run typecheck` pass · `npm test` **227/227** · `npm run test:e2e` **74/74** (production build) · `npm run build` success. The AI model switcher was also exercised live against OpenRouter (model list, direct answers, automatic fallback, allowlist rejection); the E2E suite itself never calls a real AI provider. Lab measurements (Chromium, `next start`, 390×844, unthrottled): LCP 164 ms, CLS 0, max interaction 32 ms. Landing-only JS: +43 KB gzip over the shared framework baseline, plus ~44 KB GSAP loaded lazily after hydration.
+The 8 Nov 2026 remediation passed **339/339 unit/integration tests across 27 files** and **107/107 browser E2E tests**, with no failed or skipped tests in the final runs. Lint, typecheck, and the default production build also passed. E2E used the installed Chrome/Chromium channel against the current local production build, with a test wallet and mocked Devnet RPC. The 7 Nov audit baseline was 265 unit/integration tests; 83 browser tests could not launch because the pinned Playwright browser was absent. Older README totals of 227/74 are superseded.
 
-The live Devnet smoke test has **not** produced an on-chain signature yet: the public RPC faucet is disabled (HTTP 410), so the disposable test address must be funded manually first.
+The suites include stale drafts, signing cancellation and late wallet responses, malformed RPC responses, ambiguous submission, receipt recovery, shared AI budgets, runtime motion preferences, and product routes at 320/375/768/1024/1440 px. Commands, screenshots, and lab measurements are recorded in the local implementation report at `artifacts/audit/IntentShield-Implementation-2026-11-08.md` and raw Playwright JSON; `artifacts/` is intentionally git-ignored. E2E never calls a real AI provider. Local lab timing is not a field Core Web Vitals percentile.
+
+### Verified historical Devnet transaction
+
+The user supplied [this transaction on Solana Explorer](https://explorer.solana.com/tx/3f6Kzf4dy9d3q7UXTZTQzN3HUGV1jKLxH83dgXhj7FTaZFXDQd2Vzbox1dXuQKi6tmFhWtfwJfEUTqsWU6atsTzT?cluster=devnet). Read-only Devnet RPC checks during remediation found the correct Devnet genesis hash, `finalized` status, `meta.err: null`, a **0.01 SOL** native transfer, and **5,001 lamports (0.000005001 SOL)** actual network fee, at slot **519712179** (7 Nov 2026, 15:56:40 UTC). The local public evidence is `artifacts/evidence/devnet-historical-proof.json`.
+
+The user reported the original Phantom/IntentShield screenshots. Remediation independently checked the historical on-chain transaction with both the current RPC adapter/receipt loader and the browser receipt page using live Devnet RPC; it did **not** connect a real wallet, obtain a new signature, or send a new transaction. Evidence is also recorded in `artifacts/evidence/devnet-receipt-current-adapter.json` and `artifacts/evidence/devnet-receipt-browser.json`. This proof does not establish that every current wallet/browser combination has been exercised.
 
 The suites cover the PRD matrices:
 
@@ -135,12 +145,13 @@ The suites cover the PRD matrices:
 - Requires a wallet with `solana:signTransaction`; wallets that only sign-and-send cannot be verified and are refused.
 - Wallets may rewrite unsigned transactions (Phantom adds priority-fee instructions when a transaction has no compute budget). IntentShield therefore sets a small fixed compute budget so the signed bytes stay identical; if a wallet still changes anything (for example by adding Lighthouse assertions), IntentShield refuses to send and names the change.
 - Signature verification uses WebCrypto Ed25519 (modern browsers); unsupported browsers fail closed.
-- AI rate limiting/budget are per server instance (in-memory).
-- CSP uses `'unsafe-inline'` for scripts because nonce-based CSP would force dynamic rendering for every route; all other directives are restrictive.
+- AI parse and explain share in-memory rate and daily-attempt counters within one process. Separate serverless instances and restarts do not share those counters, so this is **not a global spending hard cap**. Configure a provider/key spending limit for account-level cost control; no provider billing setting was changed during remediation.
+- An interrupted broadcast response is `unknown`, not proof that nothing was sent. A public signature is retained in session storage for receipt recovery; private keys, signed wire payloads, and approvals are not stored there. Check that signature before retrying a transfer.
+- CSP uses `'unsafe-inline'` for Next.js hydration scripts; `script-src-attr 'none'`, `frame-src 'none'`, and other restrictive directives reduce exposure but do not eliminate the inline-script trade-off.
 
 ## AI assistance disclosure
 
-- **Tools used:** Claude Code (Anthropic) assisted with implementation, tests, and documentation during the hackathon window. At runtime, the app optionally calls an OpenRouter-compatible model (configured by the operator) for draft parsing and explanations.
+- **Tools used:** Claude Code (Anthropic) and Codex (OpenAI) assisted with implementation, tests, review, and documentation. At runtime, the app optionally calls an OpenRouter-compatible model (configured by the operator) for draft parsing and explanations. Tool use does not replace human review or establish independent security certification.
 - **Human review and verification:** see the test suites and smoke-test evidence; claims in this README are limited to what those runs demonstrate.
 - **Third-party libraries:** listed in `package.json` (Next.js, React, Solana Kit, Radix UI, Tailwind CSS, GSAP, Zod, Vitest, Playwright, axe-core, lucide-react) under their respective licenses. Fonts are self-hosted under the SIL Open Font License 1.1: Basement Grotesque by basement.studio (display, `src/app/fonts/basement-grotesque/` with its license), Instrument Sans and IBM Plex Mono (via `next/font`).
 

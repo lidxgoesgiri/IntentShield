@@ -1,9 +1,30 @@
 import { describe, expect, it } from "vitest";
 import { getAiConfig } from "@/server/ai/config";
 import { extractJsonObject } from "@/server/ai/client";
-import { clientKey, createDailyBudget, createRateLimiter } from "@/server/security/request-limit";
+import { clientKey, createDailyBudget, createRateLimiter, instanceAiProtection } from "@/server/security/request-limit";
 
 describe("AI abuse protection", () => {
+  it("caps active client keys without evicting a client's existing limit", () => {
+    let now = 0;
+    const limiter = createRateLimiter({ limit: 1, windowMs: 1000, maxKeys: 2, now: () => now });
+    expect(limiter.check("a").allowed).toBe(true);
+    expect(limiter.check("b").allowed).toBe(true);
+    for (let i = 0; i < 100; i += 1) expect(limiter.check(`new-${i}`).allowed).toBe(false);
+    expect(limiter.check("a").allowed).toBe(false);
+    now = 1001;
+    expect(limiter.check("new").allowed).toBe(true);
+  });
+
+  it("shares the provider-attempt budget across route factories in one instance", () => {
+    const options = { requestsPerMinute: 7, dailyBudget: 1 };
+    const parse = instanceAiProtection(options);
+    const explain = instanceAiProtection(options);
+    parse.budget.reset();
+    expect(parse).toBe(explain);
+    expect(parse.budget.consume()).toBe(true);
+    expect(explain.budget.consume()).toBe(false);
+    parse.budget.reset();
+  });
   it("sliding window allows `limit` requests per window, then reports Retry-After", () => {
     let now = 0;
     const limiter = createRateLimiter({ limit: 2, windowMs: 60_000, now: () => now });
