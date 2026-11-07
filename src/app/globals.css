@@ -2,41 +2,62 @@
 @import "../styles/tokens.css";
 
 /* ---------------------------------------------------------------------------
- * Typography scale (PRD §11.3)
+ * Typography scale (PRD §11.3, editorial redesign)
+ * Display (Basement Grotesque Black) is reserved for poster-scale headlines;
+ * smaller titles use Instrument Sans so hierarchy comes from contrast in
+ * size, weight and family rather than one style everywhere.
  * ------------------------------------------------------------------------- */
+@utility type-display {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: clamp(2.35rem, 11.8vw, 10rem);
+  line-height: 0.86;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  color: var(--color-white);
+  font-kerning: normal;
+}
+
 @utility type-h1 {
   font-family: var(--font-display);
-  font-weight: 650;
-  font-size: clamp(2.7rem, 10vw, 4.5rem);
-  line-height: 0.94;
-  letter-spacing: -0.04em;
+  font-weight: 900;
+  font-size: clamp(2.2rem, 5vw, 4.25rem);
+  line-height: 0.92;
+  letter-spacing: -0.025em;
   color: var(--color-white);
-  @media (width >= 48rem) {
-    font-size: clamp(3.5rem, 7.5vw, 8rem);
-  }
 }
 
 @utility type-h2 {
   font-family: var(--font-display);
-  font-weight: 600;
-  font-size: clamp(2.4rem, 5vw, 5.5rem);
-  line-height: 0.98;
-  letter-spacing: -0.035em;
+  font-weight: 900;
+  font-size: clamp(2.25rem, 5.6vw, 5.9rem);
+  line-height: 0.92;
+  letter-spacing: -0.03em;
   color: var(--color-white);
 }
 
 @utility type-h3 {
-  font-family: var(--font-display);
+  font-family: var(--font-heading);
   font-weight: 600;
-  font-size: clamp(1.35rem, 2.2vw, 2.25rem);
+  font-variation-settings: "wdth" 92;
+  font-size: clamp(1.3rem, 1.9vw, 1.85rem);
   line-height: 1.12;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.018em;
   color: var(--color-white);
 }
 
 @utility type-eyebrow {
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+@utility type-meta {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -44,10 +65,11 @@
 }
 
 @utility type-lead {
-  font-size: clamp(1.0625rem, 1.3vw, 1.25rem);
-  line-height: 1.6;
+  font-size: clamp(1.0625rem, 1.25vw, 1.3rem);
+  line-height: 1.55;
+  letter-spacing: -0.005em;
   color: var(--color-silver);
-  max-width: 62ch;
+  max-width: 56ch;
 }
 
 @utility type-caption {
@@ -189,4 +211,58 @@
 }
 .fade-up {
   animation: intentshield-fade-up 220ms var(--ease-out-soft) both;
+}
+
+/* ---------------------------------------------------------------------------
+ * AI model switcher (Radix Select): open/close motion and live indicator.
+ * ------------------------------------------------------------------------- */
+@keyframes model-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes model-menu-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.model-menu {
+  transform-origin: var(--radix-select-content-transform-origin);
+}
+.model-menu[data-state="open"] {
+  animation: model-menu-in 180ms var(--ease-out-expo) both;
+}
+.model-menu[data-state="closed"] {
+  animation: model-menu-out 120ms ease-in both;
+}
+.model-option[data-state="checked"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--color-mint);
+}
+@keyframes model-live {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-mint) 45%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-mint) 0%, transparent);
+  }
+}
+.model-live-dot[data-live="true"] {
+  animation: model-live 2.4s ease-in-out infinite;
 }

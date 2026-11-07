@@ -39,7 +39,7 @@ export function ProductShowcaseTabs({ data }: { data: ShowcaseData }) {
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-3">
             <p className="type-eyebrow text-[0.72rem]">Composer</p>
-            <p className="rounded-[var(--radius-control)] border border-hairline bg-obsidian/60 p-4 font-display text-[1.05rem] leading-relaxed text-white">
+            <p className="rounded-[var(--radius-control)] border border-hairline bg-obsidian/60 p-4 font-heading text-[1.05rem] leading-relaxed text-white">
               Send 0.1 SOL to <span className="font-data break-all text-[0.9rem]">{data.intent.recipient}</span>
             </p>
             <p className="text-[0.875rem] text-silver">
