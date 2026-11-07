@@ -12,6 +12,30 @@ async function connect(page: Page) {
 }
 
 test.describe("AI model switcher (workspace)", () => {
+  test("long model names never widen the workspace on small screens", async ({ page }) => {
+    // Real label from the production allowlist; the E2E server itself runs keyless.
+    const longest = "Nemotron 3 Nano Omni 30B A3B Reasoning · NVIDIA (free)";
+    await mockDevnetRpc(page);
+    await mockAiModels(page, {
+      available: true,
+      defaultModel: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+      models: [
+        { id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", label: longest, isDefault: true },
+        { id: "nvidia/nemotron-3.5-super-vl:free", label: "Nemotron 3.5 Super VL · NVIDIA (free)", isDefault: false },
+      ],
+    });
+    for (const width of [320, 360, 390]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto("/app");
+      await expect(page.getByRole("status", { name: `Active AI model: ${longest}` })).toBeVisible();
+      const { scrollWidth, clientWidth } = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+      }));
+      expect(scrollWidth, `horizontal overflow at ${width}px`).toBeLessThanOrEqual(clientWidth);
+    }
+  });
+
   test("without a server key: AI is off and the models endpoint is empty and keyless", async ({ page, request }) => {
     const response = await request.get("/api/ai/models");
     expect(response.status()).toBe(200);

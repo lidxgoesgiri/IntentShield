@@ -114,7 +114,7 @@ export function TransferWorkspace() {
   return (
     <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">
       {/* Left: describe + review (5/12) */}
-      <div className="space-y-6 lg:col-span-5">
+      <div className="min-w-0 space-y-6 lg:col-span-5">
         <section className="hairline-panel space-y-5 p-5 sm:p-6" aria-label="Describe">
           <PanelHeading index="01" title="Describe">
             <ActiveModelBadge ai={ai} />
@@ -162,7 +162,7 @@ export function TransferWorkspace() {
       </div>
 
       {/* Right: verify, sign, confirm (7/12) */}
-      <section className="hairline-panel space-y-6 p-5 sm:p-6 lg:col-span-7" aria-label="Verify, sign and confirm">
+      <section className="hairline-panel min-w-0 space-y-6 p-5 sm:p-6 lg:col-span-7" aria-label="Verify, sign and confirm">
         <PanelHeading index="03" title="Verify · Sign · Confirm">
           <span className="type-caption">Real Devnet RPC</span>
         </PanelHeading>
