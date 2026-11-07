@@ -1,4 +1,4 @@
-import { generateKeyPairSigner, getBase64Decoder, getBase64EncodedWireTransaction, compileTransaction, createTransactionMessage, pipe, setTransactionMessageFeePayer, setTransactionMessageLifetimeUsingBlockhash, appendTransactionMessageInstruction, type Blockhash } from "@solana/kit";
+import { generateKeyPairSigner, getBase64Decoder, getBase64EncodedWireTransaction, compileTransaction, createTransactionMessage, pipe, setTransactionMessageFeePayer, setTransactionMessageLifetimeUsingBlockhash, appendTransactionMessageInstructions, type Blockhash } from "@solana/kit";
 import { describe, expect, it } from "vitest";
 import { parsePublicEnv } from "@/config/env";
 import { explorerAddressUrl, explorerTransactionUrl } from "@/features/receipt/lib/explorer-url";
@@ -6,16 +6,16 @@ import { decodeOnChainTransfer, loadReceipt } from "@/features/receipt/lib/load-
 import { RpcRequestError } from "@/lib/solana/rpc";
 import { describeTransactionError } from "@/lib/solana/transaction-errors";
 import { createFakeRpc } from "@/test/mocks/fake-rpc";
-import { memoIx, RECIPIENT, SENDER, TEST_BLOCKHASH, transferIx } from "@/test/fixtures/solana";
+import { computeUnitLimitIx, computeUnitPriceIx, memoIx, RECIPIENT, SENDER, TEST_BLOCKHASH, transferIx } from "@/test/fixtures/solana";
 
 const SIG = "5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW";
 
-function wireOf(instruction: ReturnType<typeof transferIx>): string {
+function wireOf(...instructions: ReturnType<typeof transferIx>[]): string {
   const message = pipe(
     createTransactionMessage({ version: 0 }),
     (m) => setTransactionMessageFeePayer(SENDER, m),
     (m) => setTransactionMessageLifetimeUsingBlockhash({ blockhash: TEST_BLOCKHASH as Blockhash, lastValidBlockHeight: 1n }, m),
-    (m) => appendTransactionMessageInstruction(instruction, m),
+    (m) => appendTransactionMessageInstructions(instructions, m),
   );
   return getBase64EncodedWireTransaction(compileTransaction(message));
 }
@@ -28,6 +28,14 @@ describe("receipt lookup (PRD FR-009, §10.5)", () => {
       amountLamports: 42n,
     });
     expect(decodeOnChainTransfer(wireOf(memoIx("x")))).toBeNull();
+    // The app's own layout (fixed compute budget + transfer) shows full details…
+    expect(decodeOnChainTransfer(wireOf(computeUnitLimitIx(1_000), computeUnitPriceIx(1n), transferIx(SENDER, RECIPIENT, 42n)))).toEqual({
+      sender: SENDER,
+      recipient: RECIPIENT,
+      amountLamports: 42n,
+    });
+    // …but any other compute budget does not.
+    expect(decodeOnChainTransfer(wireOf(computeUnitLimitIx(200_000), computeUnitPriceIx(9n), transferIx(SENDER, RECIPIENT, 42n)))).toBeNull();
     expect(decodeOnChainTransfer("not base64!")).toBeNull();
   });
 

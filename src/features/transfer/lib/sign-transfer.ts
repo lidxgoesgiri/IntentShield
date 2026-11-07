@@ -9,6 +9,7 @@ import {
   type TransactionMessageBytes,
 } from "@solana/kit";
 import type { ApprovedIntent } from "@/features/intent/types";
+import { describeMessageChange } from "@/features/verification/lib/describe-message-change";
 import { bytesEqual, fingerprintMessage } from "@/features/verification/lib/fingerprint-message";
 import { verifyNativeSolTransfer } from "@/features/verification/lib/verify-native-sol-transfer";
 import type { VerificationContext, VerificationResult } from "@/features/verification/types";
@@ -134,9 +135,15 @@ export async function signVerifiedTransfer(args: {
   const signedTx = outputs[0];
 
   if (!bytesEqual(signedTx.messageBytes, prepared.messageBytes)) {
+    let detail = "";
+    try {
+      detail = `: ${describeMessageChange(prepared.messageBytes, signedTx.messageBytes)}`;
+    } catch {
+      detail = "";
+    }
     throw new SignBoundaryError(
       "MESSAGE_CHANGED",
-      "Your wallet modified the transaction before signing. IntentShield cannot re-verify it, so it was not sent.",
+      `Your wallet modified the transaction before signing${detail}. IntentShield cannot re-verify it, so it was not sent.`,
     );
   }
 

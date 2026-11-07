@@ -24,7 +24,8 @@ import { submitSignedTransfer } from "@/features/transfer/lib/submit-transfer";
 import { decodeTransactionMessage } from "@/features/verification/lib/decode-transaction";
 import { RpcRequestError } from "@/lib/solana/rpc";
 import { createFakeRpc } from "@/test/mocks/fake-rpc";
-import { memoIx, RECIPIENT, TEST_BLOCKHASH, transferIx } from "@/test/fixtures/solana";
+import { decodeTransactionMessage as decodeForTest } from "@/features/verification/lib/decode-transaction";
+import { computeUnitLimitIx, computeUnitPriceIx, lighthouseIx, memoIx, RECIPIENT, TEST_BLOCKHASH, transferIx } from "@/test/fixtures/solana";
 
 let wallet: KeyPairSigner;
 let intent: ApprovedIntent;
@@ -137,6 +138,41 @@ describe("sign boundary (integration)", () => {
     expect(Uint8Array.from(wire.messageBytes)).toEqual(outcome.prepared.messageBytes);
     expect(signed.signedMessageFingerprint).toBe(outcome.prepared.fingerprint);
     expect(signer.modifyAndSignTransactions).toHaveBeenCalledTimes(1);
+  });
+
+  it("the app's message already carries its fixed compute budget, so a Phantom-style wallet has nothing to add", async () => {
+    const outcome = await readyOutcome();
+    const decoded = decodeForTest(outcome.prepared.messageBytes);
+    expect(decoded.ok && decoded.message.instructions.map((ix) => ix.programId)).toEqual([
+      "ComputeBudget111111111111111111111111111111",
+      "ComputeBudget111111111111111111111111111111",
+      "11111111111111111111111111111111",
+    ]);
+    const signed = await signVerifiedTransfer({ intent, ...outcome, signer: honestSigner() });
+    expect(signed.signedMessageFingerprint).toBe(outcome.prepared.fingerprint);
+  });
+
+  it("a wallet that appends Lighthouse assertions is refused, and the error says what it added", async () => {
+    const outcome = await readyOutcome();
+    const { calls } = createFakeRpc();
+    const guarding: TransactionSignerPort = {
+      modifyAndSignTransactions: async () => {
+        const message = pipe(
+          createTransactionMessage({ version: 0 }),
+          (m) => setTransactionMessageFeePayer(wallet.address, m),
+          (m) => setTransactionMessageLifetimeUsingBlockhash({ blockhash: outcome.prepared.lifetime.blockhash as Blockhash, lastValidBlockHeight: outcome.prepared.lifetime.lastValidBlockHeight }, m),
+          (m) => appendTransactionMessageInstruction(computeUnitLimitIx(1_000), m),
+          (m) => appendTransactionMessageInstruction(computeUnitPriceIx(1n), m),
+          (m) => appendTransactionMessageInstruction(transferIx(wallet.address, RECIPIENT, 100_000_000n), m),
+          (m) => appendTransactionMessageInstruction(lighthouseIx(), m),
+        );
+        return [await partiallySignTransaction([wallet.keyPair], compileTransaction(message))];
+      },
+    };
+    const attempt = signVerifiedTransfer({ intent, ...outcome, signer: guarding });
+    await expect(attempt).rejects.toMatchObject({ code: "MESSAGE_CHANGED" });
+    await expect(attempt).rejects.toThrow(/added Lighthouse safety assertions/);
+    expect(calls.sendTransaction).toBeUndefined();
   });
 
   it("a wallet that MUTATES the message is blocked (MESSAGE_CHANGED) and nothing is sent", async () => {

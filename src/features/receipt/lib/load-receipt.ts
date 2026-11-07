@@ -2,6 +2,7 @@ import { getBase64Encoder, getTransactionDecoder } from "@solana/kit";
 import { SYSTEM_PROGRAM_ADDRESS } from "@/config/product";
 import type { ReceiptStatus } from "@/features/transfer/types";
 import { decodeTransactionMessage, parseSystemTransferData } from "@/features/verification/lib/decode-transaction";
+import { matchTransferShape } from "@/features/verification/lib/transfer-shape";
 import { classifyRpcError, type SolanaRpcPort } from "@/lib/solana/rpc";
 import { describeTransactionError } from "@/lib/solana/transaction-errors";
 
@@ -16,19 +17,21 @@ export type ReceiptLookup =
       blockTime: bigint | null;
       feeLamports: bigint | null;
       error: string | null;
-      /** Present only when the transaction is exactly one System Program transfer. */
+      /** Present only for exactly one System Program transfer (optionally with the app's fixed compute budget). */
       transfer: DecodedOnChainTransfer | null;
     }
   | { kind: "not_found" }
   | { kind: "unavailable"; message: string };
 
-/** Decode a single native SOL transfer from raw on-chain wire bytes (or null). */
+/** Decode a single native SOL transfer from raw on-chain wire bytes (or null), using the verifier's layout rule. */
 export function decodeOnChainTransfer(wireBase64: string): DecodedOnChainTransfer | null {
   try {
     const wire = getTransactionDecoder().decode(getBase64Encoder().encode(wireBase64));
     const decoded = decodeTransactionMessage(wire.messageBytes);
-    if (!decoded.ok || decoded.message.instructions.length !== 1) return null;
-    const ix = decoded.message.instructions[0];
+    if (!decoded.ok) return null;
+    const shape = matchTransferShape(decoded.message.instructions);
+    if (!shape.ok) return null;
+    const ix = shape.transfer;
     if (!ix || ix.programId !== SYSTEM_PROGRAM_ADDRESS || ix.accounts.length !== 2) return null;
     const data = parseSystemTransferData(ix.data);
     const [source, destination] = ix.accounts;

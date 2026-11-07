@@ -1,6 +1,6 @@
 import { getTransferSolInstruction } from "@solana-program/system";
 import {
-  appendTransactionMessageInstruction,
+  appendTransactionMessageInstructions,
   compileTransaction,
   createNoopSigner,
   createTransactionMessage,
@@ -10,7 +10,13 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
   type Address,
   type Blockhash,
+  type Instruction,
 } from "@solana/kit";
+import {
+  COMPUTE_BUDGET_PROGRAM_ADDRESS,
+  TRANSFER_COMPUTE_UNIT_LIMIT,
+  TRANSFER_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS,
+} from "@/config/product";
 import { fingerprintMessage } from "@/features/verification/lib/fingerprint-message";
 
 export type TransferMessageVersion = "legacy" | 0;
@@ -43,9 +49,29 @@ export type PreparedTransfer = Readonly<{
 }>;
 
 /**
- * Compile one System Program `Transfer` instruction into a final transaction
- * message. Deliberately adds nothing else (no compute-budget or memo
- * instructions), so the verifier's single-instruction allowlist holds.
+ * The app's fixed compute budget: SetComputeUnitLimit (u8 2 + u32 LE) and
+ * SetComputeUnitPrice (u8 3 + u64 LE). Wallets such as Phantom add their own
+ * priority-fee instructions to transactions without a compute budget, which
+ * would change the reviewed bytes; declaring it here keeps them identical.
+ */
+export function transferComputeBudgetInstructions(): Instruction[] {
+  const limit = new Uint8Array(5);
+  limit[0] = 2;
+  new DataView(limit.buffer).setUint32(1, TRANSFER_COMPUTE_UNIT_LIMIT, true);
+  const price = new Uint8Array(9);
+  price[0] = 3;
+  new DataView(price.buffer).setBigUint64(1, TRANSFER_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS, true);
+  const programAddress = COMPUTE_BUDGET_PROGRAM_ADDRESS as Address;
+  return [
+    { programAddress, data: limit },
+    { programAddress, data: price },
+  ];
+}
+
+/**
+ * Compile the final transaction message: the fixed compute budget followed by
+ * one System Program `Transfer`. Nothing else (no memo or other programs), and
+ * the verifier accepts exactly this layout.
  */
 export function buildNativeSolTransfer(
   params: TransferParams,
@@ -64,8 +90,11 @@ export function buildNativeSolTransfer(
         m,
       ),
     (m) =>
-      appendTransactionMessageInstruction(
-        getTransferSolInstruction({ source, destination: params.recipient, amount: params.amountLamports }),
+      appendTransactionMessageInstructions(
+        [
+          ...transferComputeBudgetInstructions(),
+          getTransferSolInstruction({ source, destination: params.recipient, amount: params.amountLamports }),
+        ],
         m,
       ),
   );

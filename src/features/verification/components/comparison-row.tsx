@@ -21,7 +21,10 @@ export const FIELD_COPY: Record<ComparisonField, { label: string; why: string }>
   feePayer: { label: "Fee payer", why: "The account paying the network fee must be your wallet." },
   program: { label: "Program", why: "The instruction must target the System Program (11111111111111111111111111111111)." },
   network: { label: "Network", why: "Devnet only. The RPC's genesis hash must match Solana Devnet; mainnet is disabled." },
-  instructions: { label: "Instructions", why: "Extra instructions could do things you never approved, so exactly one is allowed." },
+  instructions: {
+    label: "Instructions",
+    why: "Extra instructions could do things you never approved. Only one transfer is allowed, plus IntentShield's own fixed compute budget (1,000 units at 1 micro-lamport), which stops wallets from inserting their own fee instructions.",
+  },
 };
 
 const STATE_VIEW = {

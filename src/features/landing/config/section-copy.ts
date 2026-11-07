@@ -52,7 +52,7 @@ export const HOW_COPY = {
       id: "validation",
       index: "02",
       title: "Deterministic Validation",
-      body: "The final message is decoded and compared field by field with your approved intent: program, source, fee payer, recipient, lamports, network, one instruction.",
+      body: "The final message is decoded and compared field by field with your approved intent: program, source, fee payer, recipient, lamports, network, one transfer instruction.",
       limit: "The rule engine — not a model — decides whether signing unlocks.",
     },
     {
@@ -74,7 +74,7 @@ export const SECURITY_COPY = {
   title: "Trust the checks, not the glow.",
   lead: "What IntentShield verifies, what AI only explains, and what nobody here can verify for you.",
   verified: [
-    "Exactly one System Program Transfer instruction (allowlist)",
+    "Exactly one System Program Transfer, plus the app's own fixed compute budget (allowlist)",
     "Source account and fee payer are your connected wallet",
     "Recipient address — every character",
     "Amount in integer lamports",
@@ -103,7 +103,7 @@ export const DEVELOPER_COPY = {
   stack: [
     { name: "Next.js + TypeScript", detail: "App Router, strict types, server-only AI routes." },
     { name: "Solana Kit", detail: "@solana/kit compiles, decodes and simulates the exact message." },
-    { name: "System Program transfers", detail: "@solana-program/system · single-instruction allowlist." },
+    { name: "System Program transfers", detail: "@solana-program/system · one-transfer allowlist with a fixed compute budget." },
     { name: "Solana Devnet", detail: "Genesis-hash network guard; mainnet disabled." },
     { name: "Deterministic verifier", detail: "Pure function shared by the app, Demo Lab and this page." },
     { name: "AI optional", detail: "OpenRouter-compatible, server-side, rate-limited, never trusted." },

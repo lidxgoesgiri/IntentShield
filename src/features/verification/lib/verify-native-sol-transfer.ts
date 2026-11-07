@@ -15,13 +15,9 @@ import type {
   VerificationReason,
   VerificationResult,
 } from "../types";
-import {
-  decodeTransactionMessage,
-  parseSystemTransferData,
-  type DecodedInstruction,
-  type DecodedMessage,
-} from "./decode-transaction";
+import { decodeTransactionMessage, parseSystemTransferData, type DecodedMessage } from "./decode-transaction";
 import { fingerprintMessage } from "./fingerprint-message";
+import { matchTransferShape } from "./transfer-shape";
 import { sortReasons } from "./verification-reasons";
 
 export type VerifyNativeSolTransferInput = Readonly<{
@@ -35,10 +31,7 @@ export type VerifyNativeSolTransferInput = Readonly<{
 }>;
 
 const ACTION_LABEL = "Transfer native SOL";
-
-function isSystemTransfer(instruction: DecodedInstruction): boolean {
-  return instruction.programId === SYSTEM_PROGRAM_ADDRESS && parseSystemTransferData(instruction.data) !== null;
-}
+const INSTRUCTIONS_EXPECTED = "1 transfer (+ fixed compute budget)";
 
 function compare(expected: string, actual: string | null): ComparisonState {
   if (actual === null) return "unsupported";
@@ -137,13 +130,24 @@ export function verifyNativeSolTransfer(input: VerifyNativeSolTransferInput): Ve
     const feePayer = message.accounts[0]?.address ?? null;
     if (feePayer !== intent.sender) reasons.add("FEE_PAYER_MISMATCH");
 
-    // 6. Instruction allowlist: exactly one System Program Transfer.
+    // 6. Instruction allowlist: exactly one System Program Transfer, optionally
+    //    preceded by the app's fixed compute budget (exact values, no accounts).
     const instructions = message.instructions;
-    const transferIndex = instructions.findIndex(isSystemTransfer);
-    const primary = transferIndex >= 0 ? instructions[transferIndex] : instructions[0];
+    const shape = matchTransferShape(instructions);
+    const primary = shape.transfer ?? undefined;
 
     if (instructions.length === 0) reasons.add("UNSUPPORTED_INSTRUCTION");
-    if (instructions.length > 1) reasons.add("UNEXPECTED_ADDITIONAL_INSTRUCTION");
+    else if (!shape.ok) reasons.add("UNEXPECTED_ADDITIONAL_INSTRUCTION");
+
+    // Compute Budget program accounts must be read-only non-signers.
+    if (shape.ok && shape.computeBudget) {
+      for (const instruction of instructions.slice(0, 2)) {
+        const programAccount = message.accounts[instruction.programIndex];
+        if (!programAccount || programAccount.isSigner || programAccount.isWritable) {
+          reasons.add("UNSUPPORTED_MESSAGE_FORMAT");
+        }
+      }
+    }
 
     let decoded: DecodedTransfer | null = null;
     let actualAction: string | null = null;
@@ -194,7 +198,8 @@ export function verifyNativeSolTransfer(input: VerifyNativeSolTransferInput): Ve
         if (programAccount && (programAccount.isSigner || programAccount.isWritable)) {
           reasons.add("UNSUPPORTED_MESSAGE_FORMAT");
         }
-        if (instructions.length === 1 && message.accounts.length !== 3) {
+        // Sender, recipient, System Program (+ Compute Budget program).
+        if (shape.ok && message.accounts.length !== (shape.computeBudget ? 4 : 3)) {
           reasons.add("UNSUPPORTED_MESSAGE_FORMAT");
         }
       }
@@ -232,9 +237,13 @@ export function verifyNativeSolTransfer(input: VerifyNativeSolTransferInput): Ve
       networkRow,
       {
         field: "instructions",
-        expected: "1",
-        actual: String(instructions.length),
-        state: instructions.length === 1 ? "match" : instructions.length === 0 ? "unsupported" : "changed",
+        expected: INSTRUCTIONS_EXPECTED,
+        actual: !shape.ok
+          ? `${instructions.length} instruction(s) — not an allowed layout`
+          : shape.computeBudget
+            ? "1 transfer + fixed compute budget"
+            : "1 transfer",
+        state: instructions.length === 0 ? "unsupported" : shape.ok ? "match" : "changed",
       },
     ];
 

@@ -14,7 +14,7 @@
 1. **Describe** a transfer in plain language (`Send 0.1 SOL to <full address>`) — or type the fields manually.
 2. **AI drafts, never decides.** A server-side model proposes an editable draft. Deterministic guards discard any recipient that is not *verbatim* in your text and any amount you did not literally write.
 3. **Approve the exact values.** Approval freezes `{sender, recipient, lamports, devnet}`; editing anything discards it.
-4. **Build → decode → verify the final message.** The app compiles one System Program `Transfer`, then decodes the *exact bytes* the wallet will sign and compares every field with your approval (program, source, fee payer, recipient, lamports, network, single instruction).
+4. **Build → decode → verify the final message.** The app compiles one System Program `Transfer` with a small fixed compute budget, then decodes the *exact bytes* the wallet will sign and compares every field with your approval (program, source, fee payer, recipient, lamports, network, allowed instructions).
 5. **Simulate on Devnet.** Balance + exact fee preflight, then RPC `simulateTransaction` of the same bytes. Any error, timeout, or unreadable answer blocks signing.
 6. **Sign at a verified boundary.** The wallet signs via Wallet Standard `solana:signTransaction`. IntentShield refuses to broadcast unless the wallet returned the **same bytes** with a **valid Ed25519 signature** from your account.
 7. **Broadcast once, confirm honestly.** `SUBMITTED ≠ CONFIRMED`. The receipt only says *Confirmed* after the RPC reports `confirmed`/`finalized` with no error, and links to Solana Explorer (`cluster=devnet`).
@@ -29,7 +29,7 @@ The **Demo Lab** (`/app/demo`) and the landing **simulator** run the *same pure 
 
 | Verified by the app (deterministic) | Explained by AI (untrusted) | Not verified |
 |---|---|---|
-| Exactly one System Program Transfer | Turning your sentence into a draft | Whether the recipient is trustworthy |
+| Exactly one System Program Transfer, plus the app's fixed compute budget (1,000 CU at 1 micro-lamport; any other value is blocked) | Turning your sentence into a draft | Whether the recipient is trustworthy |
 | Source and fee payer = your wallet | Optional plain-language explanation of a verdict | Reputation / scam history of addresses |
 | Recipient — every character | | Other programs, tokens, protocols |
 | Amount in integer lamports (BigInt) | | Mainnet (disabled) |
@@ -133,6 +133,7 @@ The suites cover the PRD matrices:
 - Devnet only; mainnet is disabled. Native SOL transfers only (no SPL tokens, swaps, NFTs, or arbitrary programs).
 - Intent matching does not establish whether a recipient is trustworthy.
 - Requires a wallet with `solana:signTransaction`; wallets that only sign-and-send cannot be verified and are refused.
+- Wallets may rewrite unsigned transactions (Phantom adds priority-fee instructions when a transaction has no compute budget). IntentShield therefore sets a small fixed compute budget so the signed bytes stay identical; if a wallet still changes anything (for example by adding Lighthouse assertions), IntentShield refuses to send and names the change.
 - Signature verification uses WebCrypto Ed25519 (modern browsers); unsupported browsers fail closed.
 - AI rate limiting/budget are per server instance (in-memory).
 - CSP uses `'unsafe-inline'` for scripts because nonce-based CSP would force dynamic rendering for every route; all other directives are restrictive.

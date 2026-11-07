@@ -107,7 +107,7 @@ export function ReceiptLookup({ signature }: { signature: string }) {
       />
       {!lookup.transfer && lookup.status !== "confirming" ? (
         <Alert tone="info" title="Not a single native SOL transfer">
-          This transaction is not exactly one System Program transfer, so IntentShield shows only its status.
+          This transaction is not a single System Program transfer in the layout IntentShield builds, so IntentShield shows only its status.
         </Alert>
       ) : null}
       <p className="type-caption">
