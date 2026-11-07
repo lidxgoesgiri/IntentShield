@@ -1,4 +1,5 @@
 import { LandingMotionRoot } from "../motion/landing-motion-root";
+import { AtmosphericRain } from "../visuals/atmospheric-rain";
 import { BlindSigningProblem } from "./blind-signing-problem";
 import { DeveloperEcosystem } from "./developer-ecosystem";
 import { FinalCTASection } from "./final-cta-section";
@@ -20,7 +21,8 @@ export function LandingPage() {
     <>
       <LandingHeader />
       <LandingMotionRoot>
-        <main id="main">
+        <AtmosphericRain />
+        <main id="main" className="landing-main">
           <HeroSection />
           <BlindSigningProblem />
           <SimulatorSection />
@@ -30,7 +32,9 @@ export function LandingPage() {
           <DeveloperEcosystem />
           <FinalCTASection />
         </main>
-        <LandingFooter />
+        <div className="landing-main">
+          <LandingFooter />
+        </div>
       </LandingMotionRoot>
     </>
   );
