@@ -144,3 +144,18 @@ export function parseSystemTransferData(data: Uint8Array): { lamports: bigint } 
   if (view.getUint32(0, true) !== 2) return null;
   return { lamports: view.getBigUint64(4, true) };
 }
+
+export type ComputeBudgetData =
+  | Readonly<{ kind: "unitLimit"; units: number }>
+  | Readonly<{ kind: "unitPrice"; microLamports: bigint }>;
+
+/**
+ * Parse Compute Budget program data: `SetComputeUnitLimit` (u8 2 + u32 LE) or
+ * `SetComputeUnitPrice` (u8 3 + u64 LE). Any other instruction or length → null.
+ */
+export function parseComputeBudgetData(data: Uint8Array): ComputeBudgetData | null {
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  if (data.length === 5 && data[0] === 2) return { kind: "unitLimit", units: view.getUint32(1, true) };
+  if (data.length === 9 && data[0] === 3) return { kind: "unitPrice", microLamports: view.getBigUint64(1, true) };
+  return null;
+}

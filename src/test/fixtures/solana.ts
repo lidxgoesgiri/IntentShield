@@ -1,5 +1,6 @@
 import { getTransferSolInstruction } from "@solana-program/system";
 import {
+  AccountRole,
   appendTransactionMessageInstructions,
   compileTransaction,
   createNoopSigner,
@@ -61,3 +62,27 @@ export const intentFor = (amountLamports: bigint, recipient: Address = RECIPIENT
   amountLamports,
   cluster: SUPPORTED_CHAIN,
 });
+
+export const COMPUTE_BUDGET_PROGRAM = "ComputeBudget111111111111111111111111111111" as Address;
+export const LIGHTHOUSE_PROGRAM = "L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95" as Address;
+
+/** Compute Budget `SetComputeUnitLimit` (u8 2 + u32 LE), optionally with an (invalid) account. */
+export function computeUnitLimitIx(units: number, account?: Address): Instruction {
+  const data = new Uint8Array(5);
+  data[0] = 2;
+  new DataView(data.buffer).setUint32(1, units, true);
+  return { programAddress: COMPUTE_BUDGET_PROGRAM, data, ...(account ? { accounts: [{ address: account, role: AccountRole.READONLY }] } : {}) };
+}
+
+/** Compute Budget `SetComputeUnitPrice` (u8 3 + u64 LE micro-lamports). */
+export function computeUnitPriceIx(microLamports: bigint): Instruction {
+  const data = new Uint8Array(9);
+  data[0] = 3;
+  new DataView(data.buffer).setBigUint64(1, microLamports, true);
+  return { programAddress: COMPUTE_BUDGET_PROGRAM, data };
+}
+
+/** Stand-in for a wallet-added Lighthouse assertion (only the program id matters to the tests). */
+export function lighthouseIx(): Instruction {
+  return { programAddress: LIGHTHOUSE_PROGRAM, data: Uint8Array.from([0, 1, 2, 3]) };
+}

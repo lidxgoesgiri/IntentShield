@@ -31,5 +31,22 @@ export const MAX_INTENT_TEXT_LENGTH = 300;
 /** Native System Program address (all ones in base58). */
 export const SYSTEM_PROGRAM_ADDRESS = "11111111111111111111111111111111";
 
+/**
+ * Fixed compute budget carried by every transfer IntentShield builds.
+ * Wallets such as Phantom insert their own priority-fee instructions into any
+ * unsigned transaction that has no compute budget, which changes the bytes the
+ * user reviewed and makes the signing boundary refuse to send. Declaring a
+ * small, fixed budget keeps the signed bytes identical. The verifier accepts
+ * Compute Budget instructions only with exactly these values.
+ * Measured on Devnet (2026-11-07): transfer + both instructions = 450 CU;
+ * priority fee = 1,000 CU × 1 micro-lamport ≈ 1 lamport.
+ */
+export const COMPUTE_BUDGET_PROGRAM_ADDRESS = "ComputeBudget111111111111111111111111111111";
+export const TRANSFER_COMPUTE_UNIT_LIMIT = 1_000;
+export const TRANSFER_COMPUTE_UNIT_PRICE_MICRO_LAMPORTS = 1n;
+
+/** Lighthouse assertion program some wallets add as a safety guard (named in error messages only). */
+export const LIGHTHOUSE_PROGRAM_ADDRESS = "L2TExMFKdjpN9kozasaurPirfHy9P8sbXoAN1qA3S95";
+
 /** Explorer base used for receipts; cluster query param is always devnet. */
 export const EXPLORER_BASE_URL = "https://explorer.solana.com";
