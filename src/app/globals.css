@@ -1,0 +1,192 @@
+@import "tailwindcss";
+@import "../styles/tokens.css";
+
+/* ---------------------------------------------------------------------------
+ * Typography scale (PRD §11.3)
+ * ------------------------------------------------------------------------- */
+@utility type-h1 {
+  font-family: var(--font-display);
+  font-weight: 650;
+  font-size: clamp(2.7rem, 10vw, 4.5rem);
+  line-height: 0.94;
+  letter-spacing: -0.04em;
+  color: var(--color-white);
+  @media (width >= 48rem) {
+    font-size: clamp(3.5rem, 7.5vw, 8rem);
+  }
+}
+
+@utility type-h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(2.4rem, 5vw, 5.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  color: var(--color-white);
+}
+
+@utility type-h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.35rem, 2.2vw, 2.25rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: var(--color-white);
+}
+
+@utility type-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+@utility type-lead {
+  font-size: clamp(1.0625rem, 1.3vw, 1.25rem);
+  line-height: 1.6;
+  color: var(--color-silver);
+  max-width: 62ch;
+}
+
+@utility type-caption {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+
+@utility font-data {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+@utility page-container {
+  width: 100%;
+  max-width: var(--content-width);
+  margin-inline: auto;
+  padding-inline: var(--page-gutter);
+}
+
+@utility hairline-panel {
+  background: var(--color-carbon);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--radius-panel);
+}
+
+/* ---------------------------------------------------------------------------
+ * Base
+ * ------------------------------------------------------------------------- */
+@layer base {
+  html {
+    background: var(--color-obsidian);
+    color: var(--color-silver);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--color-white);
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-mint) 32%, transparent);
+    color: var(--color-white);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 3px;
+  }
+
+  /* Anchored sections and focused targets never hide under the sticky header. */
+  [id] {
+    scroll-margin-top: calc(var(--header-height) + 24px);
+  }
+
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Skip link: visible on keyboard focus only. */
+.skip-link {
+  position: absolute;
+  left: 16px;
+  top: -100px;
+  z-index: 100;
+  padding: 12px 18px;
+  border-radius: var(--radius-control);
+  background: var(--color-mint);
+  color: var(--color-obsidian);
+  font-weight: 600;
+  text-decoration: none;
+}
+.skip-link:focus {
+  top: 12px;
+}
+
+/* Reusable restrained spinner (real work in progress only, never fake %) */
+@keyframes intentshield-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spin {
+  animation: intentshield-spin 900ms linear infinite;
+}
+
+@keyframes intentshield-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.fade-up {
+  animation: intentshield-fade-up 220ms var(--ease-out-soft) both;
+}
