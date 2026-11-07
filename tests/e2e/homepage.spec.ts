@@ -1,9 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-const SECTION_ORDER = ["hero", "problem", "simulator", "how-it-works", "product", "security", "developers", "get-started"];
+/** Eight numbered chapters plus the unnumbered stack interlude after How It Works. */
+const SECTION_ORDER = ["hero", "problem", "simulator", "how-it-works", "stack", "product", "security", "developers", "get-started"];
 
 test.describe("landing structure (LP-01, LP-20, LP-21)", () => {
-  test("renders exactly eight sections S01–S08 in order with one H1", async ({ page }) => {
+  test("renders the eight chapters S01–S08 plus the stack interlude in order, with one H1", async ({ page }) => {
     await page.goto("/");
     const ids = await page.locator("main#main > section").evaluateAll((sections) => sections.map((s) => s.id));
     expect(ids).toEqual(SECTION_ORDER);
@@ -43,6 +44,7 @@ test.describe("landing structure (LP-01, LP-20, LP-21)", () => {
         "Built for the moment before sign.",
         "Trust the checks, not the glow.",
         "Built on inspectable primitives.",
+        "Engineered for every signature.",
       ]),
     );
   });

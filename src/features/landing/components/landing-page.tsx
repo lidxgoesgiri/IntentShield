@@ -10,11 +10,12 @@ import { LandingHeader } from "./landing-header";
 import { ProductShowcase } from "./product-showcase";
 import { SecurityArchitecture } from "./security-architecture";
 import { SimulatorSection } from "./simulator-section";
+import { TechnologyMotionRail } from "./technology-motion-rail";
 
 /**
- * Composes exactly eight sections in order (PRD §5, §10.1):
- * hero → problem → simulator → how-it-works → product → security → developers → get-started.
- * The footer is a navigational element, not a section.
+ * Composes the eight numbered chapters (PRD §5, §10.1) plus one unnumbered
+ * interlude: hero → problem → simulator → how-it-works → [stack interlude] →
+ * product → security → developers → get-started. The footer is navigation.
  */
 export function LandingPage() {
   return (
@@ -27,6 +28,7 @@ export function LandingPage() {
           <BlindSigningProblem />
           <SimulatorSection />
           <HowItWorksSection />
+          <TechnologyMotionRail />
           <ProductShowcase />
           <SecurityArchitecture />
           <DeveloperEcosystem />
