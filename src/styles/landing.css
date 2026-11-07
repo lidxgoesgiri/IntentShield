@@ -1,0 +1,100 @@
+/*
+ * Landing-only styles (PRD §11.6, §29). Imported by the marketing route only,
+ * so nothing here can leak into /app.
+ */
+
+/* Decorative layers never capture pointer events or focus. */
+.landing-ambient,
+.ribbon-svg {
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Subtle localized paint behind the hero — not a full-page effect. */
+.landing-hero-paint {
+  background:
+    radial-gradient(60% 55% at 72% 42%, color-mix(in oklab, var(--color-mint) 9%, transparent) 0%, transparent 70%),
+    radial-gradient(40% 40% at 12% 8%, color-mix(in oklab, var(--color-silver) 4%, transparent) 0%, transparent 70%);
+}
+
+.landing-grid-lines {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--color-hairline) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--color-hairline) 55%, transparent) 1px, transparent 1px);
+  background-size: 96px 96px;
+  mask-image: radial-gradient(70% 60% at 60% 40%, black 0%, transparent 75%);
+}
+
+/* Ribbon: complete static path by default (no-JS + reduced motion). */
+.ribbon-track {
+  stroke: color-mix(in oklab, var(--color-mint) 16%, transparent);
+}
+.ribbon-glow {
+  stroke: color-mix(in oklab, var(--color-mint) 22%, transparent);
+  filter: blur(6px);
+}
+.ribbon-path {
+  stroke: var(--color-mint);
+}
+
+/* Hero core: thin travelling contour (CSS only, disabled for reduced motion). */
+@keyframes core-contour {
+  to {
+    stroke-dashoffset: -940;
+  }
+}
+@keyframes core-reveal {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.core-contour {
+  stroke-dasharray: 60 880;
+  animation: core-contour 14s linear infinite;
+}
+.core-reveal {
+  animation: core-reveal 800ms var(--ease-out-soft) both;
+  transform-origin: 50% 50%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core-contour {
+    animation: none;
+    stroke-dasharray: none;
+    opacity: 0.35;
+  }
+  .core-reveal {
+    animation: none;
+  }
+}
+
+/* How-it-works nodes: active state is presentation only. */
+.ribbon-node {
+  transition:
+    fill 240ms ease,
+    stroke 240ms ease,
+    r 240ms ease;
+}
+.ribbon-node[data-active="true"] {
+  fill: var(--color-mint);
+}
+
+/* Final CTA ribbon termination underline. */
+.ribbon-terminal {
+  stroke-linecap: round;
+}
+
+/* Section dividers with numbered chapter marks. */
+.chapter-rule {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    var(--color-hairline),
+    color-mix(in oklab, var(--color-hairline) 40%, transparent)
+  );
+}

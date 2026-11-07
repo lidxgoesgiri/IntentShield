@@ -1,0 +1,49 @@
+/*
+ * IntentShield design tokens — single source of truth (PRD §11.2).
+ * Tailwind's default palette is removed so only these colors exist; every
+ * utility (bg-obsidian, text-mint, border-hairline…) maps to a token below.
+ */
+@theme {
+  --color-*: initial;
+
+  /* Mandatory palette */
+  --color-obsidian: #080d10; /* main canvas */
+  --color-carbon: #151d20; /* elevated panels, visualization layers */
+  --color-mint: #64e8c7; /* signature ribbon, active line, primary accent */
+  --color-silver: #d7e2df; /* muted primary prose / secondary light text */
+  --color-white: #f3f7f5; /* headlines, high-priority content */
+
+  /* Supporting semantic values (do not replace palette identity) */
+  --color-muted: #9fb7ae;
+  --color-hairline: #30423e;
+  --color-raised: #202a2d;
+  --color-warning: #f1bf77;
+  --color-danger: #f28e91;
+  --color-mint-deep: #2fa98a; /* mint pressed state on dark text buttons */
+
+  --radius-control: 10px;
+  --radius-panel: 18px;
+
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root {
+  /* PRD semantic aliases */
+  --text-primary: var(--color-white);
+  --text-secondary: var(--color-silver);
+  --text-muted: var(--color-muted);
+  --border-hairline: var(--color-hairline);
+  --surface-raised: var(--color-raised);
+  --status-warning: var(--color-warning);
+  --status-danger: var(--color-danger);
+  --focus-ring: var(--color-mint);
+  --page-gutter: clamp(16px, 4vw, 72px);
+  --content-width: 1320px;
+  --header-height: 72px;
+
+  color-scheme: dark;
+}
