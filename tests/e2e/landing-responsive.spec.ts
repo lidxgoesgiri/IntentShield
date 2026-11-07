@@ -69,9 +69,9 @@ test.describe("responsive layout (LP-15, LP-16, §18 matrix)", () => {
     for (const right of rights) expect(right).toBeLessThanOrEqual(320);
   });
 
-  test("hero trust facts wrap cleanly: every line starts flush, nothing overflows the column", async ({ page }) => {
-    // 1024–1280 and 1920 px wrap the row in the narrow hero column; 768 and 1440 fit on one line.
-    for (const width of [768, 1024, 1280, 1440, 1920]) {
+  test("hero trust facts stay on one line from tablet up, flush with the column", async ({ page }) => {
+    // From 1024 px the hero column is only ~23–30rem wide; the compact row must still fit.
+    for (const width of [768, 1024, 1100, 1280, 1440, 1920]) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto("/");
       const layout = await page.locator("#hero .hero-trust").evaluate((list) => {
@@ -88,9 +88,9 @@ test.describe("responsive layout (LP-15, LP-16, §18 matrix)", () => {
           maxRight: Math.max(...items.map((box) => box.right - column.right)),
         };
       });
+      expect(layout.lines, `${width}px lines`).toBe(1);
       for (const start of layout.starts) expect(Math.abs(start), `${width}px line start`).toBeLessThanOrEqual(1);
       expect(layout.maxRight, `${width}px right edge`).toBeLessThanOrEqual(1);
-      if (width === 1280) expect(layout.lines, "1280px wraps").toBeGreaterThan(1);
     }
   });
 
