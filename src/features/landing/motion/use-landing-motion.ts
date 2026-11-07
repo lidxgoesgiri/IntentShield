@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, type RefObject } from "react";
+import { setupBlockReveals, setupHeadlineReveals, setupHeroScroll, setupProductReveal } from "./cinematic-scroll";
 import { MOTION_CONDITIONS } from "./motion-preferences";
 import { setupRibbonMotion } from "./use-ribbon-scroll";
 
 /**
- * Landing motion island (PRD §29). GSAP + ScrollTrigger are loaded lazily on
- * the client only, registered once, scoped to the landing root, and reverted
- * on unmount. With reduced motion nothing is created: the static, complete
- * presentation (all text visible, ribbons fully drawn) remains.
+ * Landing motion island (PRD §29). GSAP, ScrollTrigger and SplitText are
+ * loaded lazily on the client only, registered once, scoped to the landing
+ * root, and reverted on unmount. With reduced motion nothing is created: the
+ * static, complete presentation (all text visible, ribbons fully drawn) stays.
  */
 export function useLandingMotion(rootRef: RefObject<HTMLElement | null>) {
   useEffect(() => {
@@ -19,9 +20,15 @@ export function useLandingMotion(rootRef: RefObject<HTMLElement | null>) {
 
     void (async () => {
       try {
-        const [{ gsap }, { ScrollTrigger }] = await Promise.all([import("gsap"), import("gsap/ScrollTrigger")]);
+        const [{ gsap }, { ScrollTrigger }, { SplitText }] = await Promise.all([
+          import("gsap"),
+          import("gsap/ScrollTrigger"),
+          import("gsap/SplitText"),
+        ]);
+        // Split headlines only after the display font is in, so line breaks are final.
+        await document.fonts?.ready;
         if (cancelled) return;
-        gsap.registerPlugin(ScrollTrigger);
+        gsap.registerPlugin(ScrollTrigger, SplitText);
 
         const mm = gsap.matchMedia(root);
         mm.add({ motion: MOTION_CONDITIONS.motion, desktop: MOTION_CONDITIONS.desktop }, (context) => {
@@ -29,17 +36,16 @@ export function useLandingMotion(rootRef: RefObject<HTMLElement | null>) {
           if (!conditions?.motion) return;
           const desktop = Boolean(conditions.desktop);
 
-          gsap.utils.toArray<HTMLElement>("[data-reveal]", root).forEach((element) => {
-            gsap.from(element, {
-              opacity: 0,
-              y: desktop ? 20 : 12,
-              duration: desktop ? 0.7 : 0.45,
-              ease: "power2.out",
-              scrollTrigger: { trigger: element, start: "top 88%", once: true },
-            });
-          });
+          setupHeroScroll(gsap, root, desktop);
+          const splits = setupHeadlineReveals(gsap, SplitText, root, desktop);
+          setupBlockReveals(gsap, root, desktop);
+          setupProductReveal(gsap, root, desktop);
+          const restoreRibbon = setupRibbonMotion(gsap, root, desktop);
 
-          return setupRibbonMotion(gsap, root, desktop);
+          return () => {
+            splits.forEach((split) => split.revert());
+            restoreRibbon();
+          };
         });
 
         revert = () => mm.revert();

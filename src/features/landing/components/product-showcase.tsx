@@ -17,9 +17,9 @@ export function ProductShowcase() {
   const matched = runLabScenario("exact-match", 0);
 
   return (
-    <section id="product" aria-labelledby="product-title" className="border-t border-hairline">
+    <section id="product" data-atmosphere="0.28" aria-labelledby="product-title" className="border-t border-hairline">
       <div className="page-container py-[clamp(64px,11vw,168px)]">
-        <SectionHeader index="05" eyebrow="Product" title={PRODUCT_COPY.title} titleId="product-title" lead={PRODUCT_COPY.lead}>
+        <SectionHeader index="05" eyebrow="Product" title={PRODUCT_COPY.title} titleId="product-title" lead={PRODUCT_COPY.lead} split="scrub">
           <Button asChild>
             <Link href="/app">
               Launch App <ArrowRight className="size-4" aria-hidden />
@@ -27,11 +27,11 @@ export function ProductShowcase() {
           </Button>
         </SectionHeader>
 
-        <figure className="mt-14 lg:mt-20" data-reveal="">
-          <div className="overflow-hidden rounded-[22px] border border-hairline bg-carbon shadow-[0_40px_120px_-60px_rgb(100_232_199/0.25)]">
+        <figure className="mt-14 lg:mt-20">
+          <div className="product-frame overflow-hidden rounded-[22px] border border-hairline bg-carbon shadow-[0_40px_120px_-60px_rgb(100_232_199/0.25)]" data-product-frame="">
             <div className="flex items-center gap-3 border-b border-hairline bg-obsidian/70 px-4 py-3 sm:px-6">
               <BrandMark className="size-6" />
-              <span className="font-display text-[0.95rem] font-medium text-white">IntentShield</span>
+              <span className="font-heading text-[0.95rem] font-medium text-white">IntentShield</span>
               <span className="type-caption hidden sm:inline">/ workspace preview</span>
             </div>
             <ProductShowcaseTabs

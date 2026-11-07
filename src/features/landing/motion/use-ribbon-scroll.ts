@@ -7,38 +7,61 @@ function ribbonStrokes(root: HTMLElement, name: string): Element[] {
 }
 
 /**
- * Scroll-linked ribbon progress for S04 and draw-ins for S01/S08. Pure
- * presentation: it only animates stroke-dashoffset and a data-active
- * attribute on decorative SVG nodes — never content, state, or signing.
+ * Scroll-linked ribbon for S04 and the S08 underline. Pure presentation: it
+ * only animates stroke-dashoffset, opacity/transform of the step blocks and a
+ * data-active attribute on decorative SVG nodes — never content, state, or
+ * signing. On desktop the S04 stage is pinned: the ribbon draws across the
+ * three stages and each stage comes into focus as the ribbon reaches it.
  */
 export function setupRibbonMotion(gsap: Gsap, root: HTMLElement, desktop: boolean): () => void {
-  const hero = ribbonStrokes(root, "hero");
-  if (hero.length > 0) {
-    gsap.fromTo(hero, { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 1.4, delay: 0.25, ease: "power2.inOut" });
-  }
-
   const howSection = root.querySelector<HTMLElement>("[data-how-section]");
   const howStrokes = ribbonStrokes(root, desktop ? "how-desktop" : "how-mobile");
   const nodes = Array.from(root.querySelectorAll<SVGElement>("[data-ribbon-node]"));
+  const steps = Array.from(root.querySelectorAll<HTMLElement>("[data-how-step]"));
+  const stage = root.querySelector<HTMLElement>("[data-how-pin]");
+
+  const markProgress = (progress: number) => {
+    nodes.forEach((node, index) => node.setAttribute("data-active", String(progress >= 0.1 + index * 0.36)));
+    steps.forEach((step, index) => step.setAttribute("data-active", String(progress >= 0.06 + index * 0.33)));
+  };
+
   if (howSection && howStrokes.length > 0) {
-    nodes.forEach((node) => node.setAttribute("data-active", "false"));
-    gsap.fromTo(
-      howStrokes,
-      { strokeDashoffset: 1 },
-      {
-        strokeDashoffset: 0,
-        ease: "none",
+    markProgress(0);
+    if (desktop && stage) {
+      const timeline = gsap.timeline({
+        defaults: { ease: "none" },
         scrollTrigger: {
-          trigger: howSection,
-          start: "top 72%",
-          end: "center 42%",
+          trigger: stage,
+          start: "center 55%",
+          end: "+=120%",
+          pin: true,
           scrub: 0.6,
-          onUpdate: (self) => {
-            nodes.forEach((node, index) => node.setAttribute("data-active", String(self.progress >= 0.12 + index * 0.4)));
+          anticipatePin: 1,
+          onUpdate: (self) => markProgress(self.progress),
+        },
+      });
+      timeline.fromTo(howStrokes, { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 1 }, 0);
+      steps.forEach((step, index) => {
+        // Motion only: legibility comes from the data-active colour state, which stays AA-compliant.
+        timeline.fromTo(step, { y: 28 }, { y: 0, duration: 0.22, ease: "power2.out" }, 0.04 + index * 0.33);
+      });
+    } else {
+      gsap.fromTo(
+        howStrokes,
+        { strokeDashoffset: 1 },
+        {
+          strokeDashoffset: 0,
+          ease: "none",
+          scrollTrigger: {
+            trigger: howSection,
+            start: "top 72%",
+            end: "bottom 60%",
+            scrub: 0.6,
+            onUpdate: (self) => markProgress(self.progress),
           },
         },
-      },
-    );
+      );
+    }
   }
 
   const final = ribbonStrokes(root, "final");
@@ -47,12 +70,13 @@ export function setupRibbonMotion(gsap: Gsap, root: HTMLElement, desktop: boolea
     gsap.fromTo(
       final,
       { strokeDashoffset: 1 },
-      { strokeDashoffset: 0, duration: 1.1, ease: "power2.out", scrollTrigger: { trigger: finalSection, start: "top 75%", once: true } },
+      { strokeDashoffset: 0, duration: 1.3, ease: "power2.out", scrollTrigger: { trigger: finalSection, start: "top 70%", once: true } },
     );
   }
 
   return () => {
     // Restore the static, fully-drawn presentation.
     nodes.forEach((node) => node.setAttribute("data-active", "true"));
+    steps.forEach((step) => step.setAttribute("data-active", "true"));
   };
 }

@@ -12,9 +12,9 @@ const ARCHITECTURE = [
 /** S06 — Security Architecture: "Trust the checks, not the glow." Limits visible without hover. */
 export function SecurityArchitecture() {
   return (
-    <section id="security" aria-labelledby="security-title" className="border-t border-hairline">
+    <section id="security" data-atmosphere="0.35" aria-labelledby="security-title" className="border-t border-hairline">
       <div className="page-container py-[clamp(64px,11vw,168px)]">
-        <SectionHeader index="06" eyebrow="Security architecture" title={SECURITY_COPY.title} titleId="security-title" lead={SECURITY_COPY.lead} />
+        <SectionHeader index="06" eyebrow="Security architecture" title={SECURITY_COPY.title} titleId="security-title" lead={SECURITY_COPY.lead} split="lines" />
 
         <div className="mt-16 grid gap-px overflow-hidden rounded-[var(--radius-panel)] border border-hairline bg-hairline lg:mt-24 lg:grid-cols-3">
           <Column
@@ -37,7 +37,7 @@ export function SecurityArchitecture() {
           />
         </div>
 
-        <div className="mt-16" data-reveal="">
+        <div className="mt-16" data-reveal="stagger">
           <p className="type-eyebrow mb-6">Trust boundaries</p>
           <ol className="grid gap-px overflow-hidden rounded-[var(--radius-panel)] border border-hairline bg-hairline sm:grid-cols-2 lg:grid-cols-4">
             {ARCHITECTURE.map((node, index) => {
@@ -48,7 +48,7 @@ export function SecurityArchitecture() {
                     <Icon className="size-5 text-mint" aria-hidden />
                     <span className="font-mono text-[0.72rem] text-muted">{String(index + 1).padStart(2, "0")}</span>
                   </div>
-                  <h3 className="font-display text-lg font-semibold text-white">{node.title}</h3>
+                  <h3 className="font-heading text-lg font-semibold text-white">{node.title}</h3>
                   <p className="text-[0.925rem] text-silver">{node.body}</p>
                 </li>
               );
@@ -68,7 +68,7 @@ function Column({ icon, label, note, items }: { icon: React.ReactNode; label: st
   return (
     <div className="space-y-5 bg-obsidian p-6 sm:p-8" data-reveal="">
       <div className="space-y-2">
-        <h3 className="flex items-center gap-2.5 font-display text-xl font-semibold text-white">
+        <h3 className="flex items-center gap-2.5 font-heading text-xl font-semibold text-white">
           {icon}
           {label}
         </h3>

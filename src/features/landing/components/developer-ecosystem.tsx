@@ -19,21 +19,21 @@ if (!result.ok) {
 export function DeveloperEcosystem() {
   const links = externalLinks();
   return (
-    <section id="developers" aria-labelledby="developers-title" className="border-t border-hairline">
+    <section id="developers" data-atmosphere="0.3" aria-labelledby="developers-title" className="border-t border-hairline">
       <div className="page-container py-[clamp(64px,11vw,168px)]">
-        <SectionHeader index="07" eyebrow={DEVELOPER_COPY.eyebrowTitle} title={DEVELOPER_COPY.title} titleId="developers-title" />
+        <SectionHeader index="07" eyebrow={DEVELOPER_COPY.eyebrowTitle} title={DEVELOPER_COPY.title} titleId="developers-title" split="words" />
 
         <div className="mt-16 grid gap-12 lg:mt-24 lg:grid-cols-12">
-          <dl className="grid min-w-0 gap-px self-start overflow-hidden rounded-[var(--radius-panel)] border border-hairline bg-hairline sm:grid-cols-2 lg:col-span-7" data-reveal="">
+          <dl className="grid min-w-0 gap-px self-start overflow-hidden rounded-[var(--radius-panel)] border border-hairline bg-hairline sm:grid-cols-2 lg:col-span-7" data-reveal="clip">
             {DEVELOPER_COPY.stack.map((item) => (
               <div key={item.name} className="space-y-1.5 bg-obsidian p-6">
-                <dt className="font-display text-[1.05rem] font-semibold text-white">{item.name}</dt>
+                <dt className="font-heading text-[1.05rem] font-semibold text-white">{item.name}</dt>
                 <dd className="text-[0.925rem] text-silver">{item.detail}</dd>
               </div>
             ))}
           </dl>
 
-          <div className="min-w-0 space-y-6 lg:col-span-5" data-reveal="">
+          <div className="min-w-0 space-y-6 lg:col-span-5" data-reveal="slide">
             <figure className="overflow-hidden rounded-[var(--radius-panel)] border border-hairline bg-carbon">
               <figcaption className="flex items-center gap-2 border-b border-hairline px-4 py-2.5 font-mono text-[0.75rem] text-muted">
                 <FileCode className="size-4" aria-hidden /> src/features/verification/lib/verify-native-sol-transfer.ts

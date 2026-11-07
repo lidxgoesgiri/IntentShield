@@ -7,19 +7,19 @@ import { SectionHeader } from "./section-header";
 /** S02 — Blind Signing Problem (PRD §10.1). Illustrative, never submitted. */
 export function BlindSigningProblem() {
   return (
-    <section id="problem" aria-labelledby="problem-title" className="border-t border-hairline">
+    <section id="problem" data-atmosphere="0.55" aria-labelledby="problem-title" className="border-t border-hairline">
       <div className="page-container py-[clamp(64px,11vw,168px)]">
-        <SectionHeader index="02" eyebrow="The blind-signing problem" title={PROBLEM_COPY.title} titleId="problem-title" lead={PROBLEM_COPY.lead} />
+        <SectionHeader index="02" eyebrow="The blind-signing problem" title={PROBLEM_COPY.title} titleId="problem-title" lead={PROBLEM_COPY.lead} split="words" />
 
         <div className="mt-16 grid border-y border-hairline lg:mt-24 lg:grid-cols-2">
-          <div className="space-y-4 border-b border-hairline py-8 lg:border-b-0 lg:border-r lg:pr-12" data-reveal="">
+          <div className="space-y-4 border-b border-hairline py-8 lg:border-b-0 lg:border-r lg:pr-12" data-reveal="slide">
             <h3 className="type-eyebrow">What you intended</h3>
-            <p className="font-display text-[clamp(1.5rem,2.6vw,2.4rem)] leading-tight text-white">
+            <p className="font-heading text-[clamp(1.5rem,2.6vw,2.4rem)] leading-tight text-white">
               Send <span className="text-mint">0.1 SOL</span> to the friend whose address you copied.
             </p>
             <p className="text-silver">One transfer. One recipient. One amount you can read.</p>
           </div>
-          <div className="space-y-4 py-8 lg:pl-12" data-reveal="">
+          <div className="space-y-4 py-8 lg:pl-12" data-reveal="stagger">
             <h3 className="type-eyebrow">What a transaction can contain</h3>
             <ul className="space-y-3 text-silver">
               <li className="flex gap-3">
@@ -38,7 +38,7 @@ export function BlindSigningProblem() {
         <div className="mt-14 space-y-3">
           <p className="type-eyebrow text-[0.72rem]">Illustrative examples / not submitted</p>
           <ol className="divide-y divide-hairline border-y border-hairline">
-            <li className="grid gap-6 py-8 md:grid-cols-12" data-reveal="">
+            <li className="grid gap-6 py-8 md:grid-cols-12" data-reveal="clip">
               <p className="font-mono text-[0.8rem] uppercase tracking-[0.1em] text-muted md:col-span-2">Case A · amount</p>
               <div className="md:col-span-4">
                 <p className="type-caption">You approved</p>
@@ -52,7 +52,7 @@ export function BlindSigningProblem() {
               </div>
               <p className="text-[0.925rem] text-silver md:col-span-2">Eight times what you meant — one digit.</p>
             </li>
-            <li className="grid gap-6 py-8 md:grid-cols-12" data-reveal="">
+            <li className="grid gap-6 py-8 md:grid-cols-12" data-reveal="clip">
               <p className="font-mono text-[0.8rem] uppercase tracking-[0.1em] text-muted md:col-span-2">Case B · recipient</p>
               <div className="space-y-4 md:col-span-8">
                 <div>
