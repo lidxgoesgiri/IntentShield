@@ -7,6 +7,8 @@ import { Field, Textarea } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/misc";
 import { MAX_INTENT_TEXT_LENGTH } from "@/config/product";
 import type { AiNotice } from "@/features/transfer/types";
+import type { AiModelsState } from "../hooks/use-ai-models";
+import { ModelSwitcher } from "./model-switcher";
 
 /**
  * Natural-language composer (PRD FR-002). The AI only fills an editable,
@@ -21,6 +23,7 @@ export function IntentComposer({
   disabled,
   aiDisabledReason,
   notice,
+  ai,
 }: {
   text: string;
   onTextChange: (value: string) => void;
@@ -30,6 +33,7 @@ export function IntentComposer({
   disabled: boolean;
   aiDisabledReason: string | null;
   notice: AiNotice | null;
+  ai: AiModelsState;
 }) {
   const length = text.length;
   const tooLong = length > MAX_INTENT_TEXT_LENGTH;
@@ -67,6 +71,8 @@ export function IntentComposer({
         />
       </Field>
 
+      <ModelSwitcher ai={ai} disabled={disabled || parsing} />
+
       <div className="flex flex-wrap gap-3">
         <Button onClick={onAnalyze} disabled={disabled || parsing || empty || tooLong || Boolean(aiDisabledReason)}>
           {parsing ? <Spinner className="text-obsidian" label="Analyzing…" /> : (
@@ -91,6 +97,12 @@ export function IntentComposer({
             <p>
               <span className="type-eyebrow mr-2 text-[0.7rem]">AI note · untrusted</span>
               {notice.explanation}
+            </p>
+          ) : null}
+          {notice.model ? (
+            <p className="type-caption mt-1" data-ai-attribution="">
+              Answered by {ai.labelFor(notice.model.model)}
+              {notice.model.fallbackUsed ? ` — fallback after ${ai.labelFor(notice.model.requestedModel)} failed` : ""}.
             </p>
           ) : null}
         </Alert>

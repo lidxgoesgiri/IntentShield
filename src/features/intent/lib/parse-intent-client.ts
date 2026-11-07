@@ -20,7 +20,7 @@ type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
  */
 export async function requestIntentParse(
   text: string,
-  options: { signal?: AbortSignal; fetchImpl?: FetchLike; timeoutMs?: number; online?: boolean } = {},
+  options: { signal?: AbortSignal; fetchImpl?: FetchLike; timeoutMs?: number; online?: boolean; model?: string | null } = {},
 ): Promise<ParseClientResult> {
   const trimmed = text.trim();
   if (trimmed.length === 0) return { ok: false, kind: "invalid_request", message: "Describe the transfer you want to make." };
@@ -31,7 +31,8 @@ export async function requestIntentParse(
   if (!online) return { ok: false, kind: "offline", message: AI_OFFLINE_MESSAGE };
 
   const fetchImpl = options.fetchImpl ?? fetch;
-  const timeout = AbortSignal.timeout(options.timeoutMs ?? 12_000);
+  // Covers the server's primary attempt + one model fallback (≈18 s budget).
+  const timeout = AbortSignal.timeout(options.timeoutMs ?? 22_000);
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
 
   let response: Response;
@@ -39,7 +40,7 @@ export async function requestIntentParse(
     response = await fetchImpl("/api/ai/parse-intent", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text: trimmed }),
+      body: JSON.stringify(options.model ? { text: trimmed, model: options.model } : { text: trimmed }),
       signal,
     });
   } catch (error) {
@@ -79,5 +80,6 @@ export async function requestIntentParse(
     },
     trimmed,
   );
-  return { ok: true, response: guarded };
+  // Model attribution is display-only and re-attached after the guards ran.
+  return { ok: true, response: validated.data.meta ? { ...guarded, meta: validated.data.meta } : guarded };
 }

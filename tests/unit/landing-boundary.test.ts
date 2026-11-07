@@ -121,6 +121,32 @@ describe("pure verifier boundary (PRD §14 rule 2)", () => {
   });
 });
 
+describe("AI model selection cannot influence verification or signing", () => {
+  const securityCore = [
+    ...listFiles(join(SRC, "features", "verification", "lib")),
+    ...listFiles(join(SRC, "features", "transfer", "lib")),
+    join(SRC, "features", "transfer", "machine.ts"),
+  ];
+  const graph = importGraph(securityCore);
+  const AI_SELECTION = [
+    "src/features/intent/hooks/use-ai-models.ts",
+    "src/features/intent/lib/ai-models-client.ts",
+    "src/features/intent/components/model-switcher.tsx",
+    "src/features/intent/lib/parse-intent-client.ts",
+    "src/features/verification/services/explain-client.ts",
+  ];
+
+  it("verifier, transfer pipeline and state machine never import model selection or AI clients", () => {
+    for (const file of AI_SELECTION) expect(graph.files).not.toContain(file);
+    for (const file of graph.files) expect(file).not.toMatch(/^src\/server\//);
+  });
+
+  it("the verifier takes no model input", () => {
+    const verifier = readFileSync(join(SRC, "features", "verification", "lib", "verify-native-sol-transfer.ts"), "utf8");
+    expect(verifier).not.toMatch(/(^|[^A-Za-z])model([^A-Za-z]|$)/i);
+  });
+});
+
 describe("secrets stay server-side", () => {
   it("no client-reachable module reads server-only AI env vars", () => {
     const clientRoots = [join(SRC, "features"), join(SRC, "components"), join(SRC, "lib"), join(SRC, "config")];

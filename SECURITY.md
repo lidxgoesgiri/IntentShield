@@ -11,7 +11,7 @@ These are enforced in code and covered by automated tests (`npm test`, `npm run 
 3. **Fail closed.** Mismatched recipient/amount/source/fee payer, extra or unsupported instructions, undecodable messages, non-Devnet networks, failed or unavailable simulation, and expired blockhashes all keep signing disabled.
 4. **Verified signing boundary.** The app refuses to broadcast unless the wallet returned the same message bytes it reviewed, signed by the approved account with a valid Ed25519 signature. It broadcasts those bytes once and never re-signs automatically.
 5. **Honest status.** "Submitted" is never shown as "Confirmed"; confirmation requires RPC evidence.
-6. **Secrets stay server-side.** AI provider keys live only in server environment variables (never `NEXT_PUBLIC_*`), in modules marked `server-only`. The AI model is configured on the server, not by the browser.
+6. **Secrets stay server-side.** AI provider keys live only in server environment variables (never `NEXT_PUBLIC_*`), in modules marked `server-only`. Users may switch between AI models, but only within a server-side allowlist; any other model id is rejected before a provider call. The model choice affects only the untrusted draft/explanation — never the verifier, simulation, or signing gate.
 
 ## Out of scope
 

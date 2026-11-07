@@ -314,6 +314,28 @@ describe("transfer state machine (PRD §7)", () => {
     expect(fresh.approvedIntent).toBeNull();
   });
 
+  it("AI model attribution is display-only: it changes neither the draft rules nor approval", () => {
+    const response = {
+      status: "complete" as const,
+      draft: { action: "transfer_native_sol" as const, amountSol: "0.5", recipient: RECIPIENT },
+      missingFields: [],
+      explanation: "",
+    };
+    const started = transferReducer(createInitialState(SENDER), { type: "PARSE_STARTED", requestId: "m" });
+    const viaDefault = transferReducer(started, { type: "PARSE_SUCCEEDED", requestId: "m", response });
+    const viaFallback = transferReducer(started, {
+      type: "PARSE_SUCCEEDED",
+      requestId: "m",
+      response: { ...response, meta: { model: "a/one", requestedModel: "b/two", fallbackUsed: true } },
+    });
+    expect(viaFallback.aiNotice?.model).toEqual({ model: "a/one", requestedModel: "b/two", fallbackUsed: true });
+    // Same draft, same status, still no approval, no verification — whichever model answered.
+    expect(viaFallback.draft).toEqual(viaDefault.draft);
+    expect(viaFallback.status).toBe(viaDefault.status);
+    expect(viaFallback.approvedIntent).toBeNull();
+    expect(viaFallback.verification).toBeNull();
+  });
+
   it("AI failure moves to AI_UNAVAILABLE with manual fallback copy", () => {
     const started = transferReducer(createInitialState(SENDER), { type: "PARSE_STARTED", requestId: "x" });
     const failed = transferReducer(started, {

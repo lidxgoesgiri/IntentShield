@@ -33,8 +33,11 @@ export default defineConfig({
       NEXT_PUBLIC_SOLANA_CLUSTER: "devnet",
       NEXT_PUBLIC_APP_URL: BASE_URL,
       NEXT_PUBLIC_REPOSITORY_URL: "https://github.com/lidxgoesgiri/IntentShield",
+      // Deterministic E2E: an empty value is NOT overridden by .env.local, so no
+      // real AI provider is ever called from the test suite.
       OPENROUTER_API_KEY: "",
       OPENROUTER_MODEL: "",
+      OPENROUTER_MODELS: "",
     },
   },
 });

@@ -34,11 +34,13 @@ describe("AI abuse protection", () => {
 });
 
 describe("AI config & output parsing", () => {
-  it("is not configured without both key and model", () => {
+  it("is not configured without both key and a well-formed model id", () => {
     expect(getAiConfig({}).configured).toBe(false);
     expect(getAiConfig({ OPENROUTER_API_KEY: "k" }).configured).toBe(false);
-    expect(getAiConfig({ OPENROUTER_API_KEY: "k", OPENROUTER_MODEL: "m" }).configured).toBe(true);
-    expect(getAiConfig({ OPENROUTER_API_KEY: "k", OPENROUTER_MODEL: "m", AI_BASE_URL: "not a url" }).configured).toBe(false);
+    // Model ids must look like provider/model; a bare "m" is rejected, never forwarded.
+    expect(getAiConfig({ OPENROUTER_API_KEY: "k", OPENROUTER_MODEL: "m" }).configured).toBe(false);
+    expect(getAiConfig({ OPENROUTER_API_KEY: "k", OPENROUTER_MODEL: "provider/m" }).configured).toBe(true);
+    expect(getAiConfig({ OPENROUTER_API_KEY: "k", OPENROUTER_MODEL: "provider/m", AI_BASE_URL: "not a url" }).configured).toBe(false);
   });
 
   it("extracts JSON from fenced or chatty model output", () => {

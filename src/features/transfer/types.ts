@@ -1,4 +1,4 @@
-import type { ApprovedIntent } from "@/features/intent/types";
+import type { AiCallMeta, ApprovedIntent } from "@/features/intent/types";
 import type { VerificationResult } from "@/features/verification/types";
 import type { PreparedTransfer } from "./lib/build-transfer";
 
@@ -84,6 +84,8 @@ export type AiNotice = Readonly<{
   /** Display-only, untrusted AI text. */
   explanation?: string;
   missingFields?: ReadonlyArray<"amountSol" | "recipient">;
+  /** Which allowlisted model answered (display only; never a trust signal). */
+  model?: AiCallMeta;
 }>;
 
 export type TransferState = Readonly<{

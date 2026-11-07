@@ -10,14 +10,27 @@ import { requestVerificationExplanation } from "../services/explain-client";
 type ExplainState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "ready"; text: string }
+  | { status: "ready"; text: string; answeredBy: string | null; fallbackFrom: string | null }
   | { status: "unavailable"; message: string };
 
 /**
  * Optional AI explanation of a verdict the rule engine already produced
  * (PRD §9.1 #4, S04 "AI Explanation"). Display-only and clearly labeled.
  */
-export function AiExplanation({ summary, verdictKey, disabledReason }: { summary: ExplainRequest; verdictKey: string; disabledReason: string | null }) {
+export function AiExplanation({
+  summary,
+  verdictKey,
+  disabledReason,
+  model,
+  labelFor,
+}: {
+  summary: ExplainRequest;
+  verdictKey: string;
+  disabledReason: string | null;
+  /** Switcher choice; selects who explains, never what the verdict is. */
+  model: string | null;
+  labelFor: (id: string | null | undefined) => string;
+}) {
   const [state, setState] = useState<ExplainState>({ status: "idle" });
   const [forKey, setForKey] = useState(verdictKey);
   const abort = useRef<AbortController | null>(null);
@@ -36,9 +49,18 @@ export function AiExplanation({ summary, verdictKey, disabledReason }: { summary
     abort.current = controller;
     setState({ status: "loading" });
     try {
-      const result = await requestVerificationExplanation(summary, { signal: controller.signal });
+      const result = await requestVerificationExplanation(summary, { signal: controller.signal, model });
       if (controller.signal.aborted) return;
-      setState(result.ok ? { status: "ready", text: result.explanation } : { status: "unavailable", message: result.message });
+      setState(
+        result.ok
+          ? {
+              status: "ready",
+              text: result.explanation,
+              answeredBy: result.meta?.model ?? null,
+              fallbackFrom: result.meta?.fallbackUsed ? result.meta.requestedModel : null,
+            }
+          : { status: "unavailable", message: result.message },
+      );
     } catch {
       if (!controller.signal.aborted) setState({ status: "unavailable", message: "AI explanation is unavailable." });
     }
@@ -58,7 +80,17 @@ export function AiExplanation({ summary, verdictKey, disabledReason }: { summary
         ) : null}
       </div>
       <div aria-live="polite" className="mt-2 text-[0.925rem] leading-relaxed">
-        {state.status === "ready" ? <p className="text-silver">{state.text}</p> : null}
+        {state.status === "ready" ? (
+          <>
+            <p className="text-silver">{state.text}</p>
+            {state.answeredBy ? (
+              <p className="type-caption mt-1">
+                Explained by {labelFor(state.answeredBy)}
+                {state.fallbackFrom ? ` — fallback after ${labelFor(state.fallbackFrom)} failed` : ""}.
+              </p>
+            ) : null}
+          </>
+        ) : null}
         {state.status === "unavailable" ? <p className="text-muted">{state.message}</p> : null}
         {disabledReason && state.status === "idle" ? <p className="type-caption">{disabledReason}</p> : null}
       </div>
