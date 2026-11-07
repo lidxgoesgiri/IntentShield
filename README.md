@@ -19,6 +19,10 @@
 6. **Sign at a verified boundary.** The wallet signs via Wallet Standard `solana:signTransaction`. IntentShield refuses to broadcast unless the wallet returned the **same bytes** with a **valid Ed25519 signature** from your account.
 7. **Broadcast once, confirm honestly.** `SUBMITTED ≠ CONFIRMED`. The receipt only says *Confirmed* after the RPC reports `confirmed`/`finalized` with no error, and links to Solana Explorer (`cluster=devnet`).
 
+### AI model switcher
+
+The workspace lets you choose which AI model drafts and explains, from a **server-side allowlist** (`OPENROUTER_MODEL` + `OPENROUTER_MODELS`). The active model is shown next to the composer, the choice is remembered locally but re-validated against the server list, and every answer says which model replied. If the selected model fails (rate limit, timeout, empty or invalid output), the server falls back once to the healthiest alternative — models that just failed cool down for a minute — and the UI labels the fallback. If no model answers, the manual flow takes over. The model choice never reaches the deterministic verifier, simulation, or signing gate (enforced by an import-graph test).
+
 The **Demo Lab** (`/app/demo`) and the landing **simulator** run the *same pure verifier* on controlled, unsigned sample transactions (changed amount, lookalike recipient, extra instruction, bytes mutated after review) — labelled *Controlled demo · No funds moved*.
 
 ## What is verified — and what is not
@@ -60,6 +64,7 @@ flowchart LR
 | `/tx/[signature]` | Receipt read from Devnet RPC; "Confirmed" only with RPC evidence |
 | `POST /api/ai/parse-intent` | Untrusted structured draft (Zod-validated, 300 chars max, 8 s timeout, 1 retry, rate-limited) |
 | `POST /api/ai/explain` | Optional explanation of an existing verdict (receives no addresses) |
+| `GET /api/ai/models` | Server allowlist of selectable models: public ids, labels, default — no keys |
 | `GET /api/health` | `{ status, service, cluster }` only |
 
 Key modules: `src/features/verification/lib/verify-native-sol-transfer.ts` (pure verifier), `src/features/transfer/lib/sign-transfer.ts` (sign boundary), `src/features/transfer/machine.ts` (state machine), `src/server/ai/*` (server-only AI).
@@ -89,7 +94,9 @@ To use the real workflow you need a Wallet Standard Solana wallet (Phantom, Solf
 | `NEXT_PUBLIC_APP_URL` | public | Used for metadata. |
 | `NEXT_PUBLIC_REPOSITORY_URL` / `NEXT_PUBLIC_DOCS_URL` | public | Links render only when set. |
 | `NEXT_PUBLIC_PROOF_SIGNATURE` | public | Optional verified Devnet signature to link from the landing. |
-| `OPENROUTER_API_KEY`, `OPENROUTER_MODEL` | **server only** | Without them the AI routes answer `503 AI_UNAVAILABLE` and the manual flow is used. |
+| `OPENROUTER_API_KEY` | **server only** | Without it the AI routes answer `503 AI_UNAVAILABLE` and the manual flow is used. |
+| `OPENROUTER_MODEL` | **server only** | Default model (`provider/model[:variant]`); may be a comma-separated list whose first entry is the default. |
+| `OPENROUTER_MODELS` | **server only** | Optional extra selectable models (comma-separated). Malformed ids are dropped; ids outside the allowlist are rejected with `400`. |
 | `AI_BASE_URL`, `AI_REQUESTS_PER_MINUTE`, `AI_DAILY_REQUEST_BUDGET` | server only | Optional overrides. |
 
 Never put secrets in `NEXT_PUBLIC_*` variables.
@@ -112,7 +119,7 @@ Never put secrets in `NEXT_PUBLIC_*` variables.
 
 ## Testing summary
 
-Latest local run (7 Nov 2026): `npm run lint` 0 errors · `npm run typecheck` pass · `npm test` **188/188** · `npm run test:e2e` **70/70** (production build) · `npm run build` success. Lab measurements (Chromium, `next start`, 390×844, unthrottled): LCP 164 ms, CLS 0, max interaction 32 ms. Landing-only JS: +43 KB gzip over the shared framework baseline, plus ~44 KB GSAP loaded lazily after hydration.
+Latest local run (7 Nov 2026): `npm run lint` 0 errors · `npm run typecheck` pass · `npm test` **227/227** · `npm run test:e2e` **74/74** (production build) · `npm run build` success. The AI model switcher was also exercised live against OpenRouter (model list, direct answers, automatic fallback, allowlist rejection); the E2E suite itself never calls a real AI provider. Lab measurements (Chromium, `next start`, 390×844, unthrottled): LCP 164 ms, CLS 0, max interaction 32 ms. Landing-only JS: +43 KB gzip over the shared framework baseline, plus ~44 KB GSAP loaded lazily after hydration.
 
 The live Devnet smoke test has **not** produced an on-chain signature yet: the public RPC faucet is disabled (HTTP 410), so the disposable test address must be funded manually first.
 
