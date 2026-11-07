@@ -85,7 +85,8 @@ export function useTransferMachine() {
   }, []);
   const enterManually = useCallback(() => dispatch({ type: "MANUAL_ENTRY" }), []);
 
-  const analyze = useCallback(async () => {
+  /** `model` is the switcher's choice; it only selects who drafts (untrusted). */
+  const analyze = useCallback(async (model?: string | null) => {
     const text = stateRef.current.composerText;
     parseAbort.current?.abort();
     const controller = new AbortController();
@@ -93,7 +94,7 @@ export function useTransferMachine() {
     const requestId = newRequestId();
     dispatch({ type: "PARSE_STARTED", requestId });
     try {
-      const result = await requestIntentParse(text, { signal: controller.signal });
+      const result = await requestIntentParse(text, { signal: controller.signal, model: model ?? null });
       if (controller.signal.aborted) return;
       if (result.ok) dispatch({ type: "PARSE_SUCCEEDED", requestId, response: result.response });
       else

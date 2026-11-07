@@ -6,6 +6,8 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/misc";
 import { IntentComposer } from "@/features/intent/components/intent-composer";
+import { ActiveModelBadge } from "@/features/intent/components/model-switcher";
+import { useAiModels } from "@/features/intent/hooks/use-ai-models";
 import { IntentSummary } from "@/features/intent/components/intent-summary";
 import { ManualTransferFields } from "@/features/intent/components/manual-transfer-fields";
 import { validateDraft } from "@/features/intent/lib/intent-validation";
@@ -58,6 +60,8 @@ function PanelHeading({ index, title, children }: { index: string; title: string
 
 export function TransferWorkspace() {
   const { state, wallet, online, devnet, approvalErrors, signAvailability, actions } = useTransferMachine();
+  // Model choice feeds only the untrusted AI draft/explanation, never the verifier.
+  const ai = useAiModels();
   const [touched, setTouched] = useState({ amountSol: false, recipient: false });
 
   const editable = isDraftEditable(state.status);
@@ -81,7 +85,11 @@ export function TransferWorkspace() {
           : null;
   const canApprove = state.status === "DRAFT_READY" && Boolean(wallet.address) && devnet.state === "verified" && validation.ok;
 
-  const aiDisabledReason = !online ? "AI help is offline while your browser is offline. Enter the details manually." : null;
+  const aiDisabledReason = !online
+    ? "AI help is offline while your browser is offline. Enter the details manually."
+    : ai.status === "off"
+      ? "AI drafting is not configured on this deployment. Enter the details manually."
+      : null;
   const working = ["INTENT_APPROVED", "BUILDING", "VERIFYING", "SIMULATING"].includes(state.status);
   const summary = explainSummary(state);
   const blockedStates = ["BLOCKED", "UNABLE_TO_VERIFY", "SIMULATION_FAILED"];
@@ -108,11 +116,13 @@ export function TransferWorkspace() {
       {/* Left: describe + review (5/12) */}
       <div className="space-y-6 lg:col-span-5">
         <section className="hairline-panel space-y-5 p-5 sm:p-6" aria-label="Describe">
-          <PanelHeading index="01" title="Describe" />
+          <PanelHeading index="01" title="Describe">
+            <ActiveModelBadge ai={ai} />
+          </PanelHeading>
           <IntentComposer
             text={state.composerText}
             onTextChange={actions.setComposerText}
-            onAnalyze={() => void actions.analyze()}
+            onAnalyze={() => void actions.analyze(ai.selectedModel)}
             onManual={() => {
               actions.enterManually();
               document.getElementById("amount-sol")?.focus();
@@ -121,6 +131,7 @@ export function TransferWorkspace() {
             disabled={!editable}
             aiDisabledReason={aiDisabledReason}
             notice={state.aiNotice}
+            ai={ai}
           />
         </section>
 
@@ -222,7 +233,11 @@ export function TransferWorkspace() {
           <AiExplanation
             summary={summary}
             verdictKey={`${state.verification.messageFingerprint}:${state.verification.status}:${state.simulation?.status ?? "none"}`}
-            disabledReason={!online ? "Unavailable while offline." : null}
+            disabledReason={
+              !online ? "Unavailable while offline." : ai.status === "off" ? "AI is not configured on this deployment." : null
+            }
+            model={ai.selectedModel}
+            labelFor={ai.labelFor}
           />
         ) : null}
 

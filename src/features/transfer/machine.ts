@@ -203,14 +203,21 @@ export function transferReducer(state: MachineState, event: TransferEvent): Mach
         recipient: response.draft.recipient ?? state.draft.recipient,
         source: "ai",
       };
+      const model = response.meta ? { model: response.meta } : {};
       const aiNotice: AiNotice =
         response.status === "complete"
-          ? { kind: "parsed", message: "Draft prepared from your request. Review every field before approving.", explanation: response.explanation }
+          ? {
+              kind: "parsed",
+              message: "Draft prepared from your request. Review every field before approving.",
+              explanation: response.explanation,
+              ...model,
+            }
           : response.status === "unsupported"
             ? {
                 kind: "unsupported",
                 message: "Only native SOL transfers on Devnet are supported. No transaction was prepared.",
                 explanation: response.explanation,
+                ...model,
               }
             : {
                 kind: "needs_input",
@@ -219,6 +226,7 @@ export function transferReducer(state: MachineState, event: TransferEvent): Mach
                   : "Enter an exact amount in SOL.",
                 explanation: response.explanation,
                 missingFields: response.missingFields,
+                ...model,
               };
       const next = {
         ...state,
