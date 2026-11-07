@@ -1,28 +1,15 @@
 ## Summary
-<!-- Explain what changed and why. -->
 
-## Scope
-- [ ] Feature
-- [ ] Bug fix
-- [ ] Refactor
-- [ ] Documentation
-- [ ] Tests / CI
+<!-- 2–4 sentences: what this PR changes and why it matters. -->
 
-## Validation
-- [ ] Lint passed
-- [ ] Relevant tests passed
-- [ ] Build passed
-- [ ] Manual feature flow tested (if applicable)
-- [ ] No secrets or private keys committed
-- [ ] Wallet / transaction / security regression checked (if applicable)
+## Changes
 
-## Evidence
-<!-- Attach screenshots, actual test outputs, or genuine Solana Devnet transaction links. Label demo data explicitly. -->
+<!-- Main changes grouped by feature or component. Call out anything that touches deterministic verification, wallet signing, Devnet transactions or AI. -->
 
-## Risks / Limitations
-<!-- List known gaps or tests not run honestly. -->
+## Testing
 
-## Author & attribution
-- [ ] Git commit identity is configured for the actual owner of the changes.
-- [ ] Human collaborators are credited when applicable.
-- [ ] AI tooling used is documented separately in README/submission where relevant.
+<!-- Commands actually run and their results (lint, typecheck, unit, E2E, build). Do not list checks that were not run. -->
+
+## Known Limitations
+
+<!-- Remaining gaps or risks that affect readiness, integration or security. Write "None" if there are none. -->
