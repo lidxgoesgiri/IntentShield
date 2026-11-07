@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
-import { publicConfig } from "@/config/env";
+import { resolveSiteUrl } from "@/config/site-url";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -23,7 +23,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(publicConfig.appUrl),
+  metadataBase: resolveSiteUrl(),
   title: {
     default: "IntentShield — Know what you sign.",
     template: "%s · IntentShield",
