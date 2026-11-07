@@ -1,13 +1,48 @@
 "use client";
 
-import { Bot } from "lucide-react";
+import { Bot, Check, ChevronDown } from "lucide-react";
+import { Select } from "radix-ui";
 import { cn } from "@/lib/utils";
-import type { AiModelsState } from "../hooks/use-ai-models";
+import type { AiModelOption, AiModelsState } from "../hooks/use-ai-models";
+
+type Display = Readonly<{ name: string; provider: string; detail: string | null }>;
+
+/** Display fields from the server; older payloads only carry `label`. */
+function displayOf(model: AiModelOption): Display {
+  return { name: model.name ?? model.label, provider: model.provider ?? "", detail: model.detail ?? null };
+}
+
+function initials(provider: string): string {
+  const words = provider.replace(/[^a-z0-9 ]/gi, " ").split(/\s+/).filter(Boolean);
+  if (words.length === 0) return "AI";
+  if (words.length === 1) return words[0]!.slice(0, 2).toUpperCase();
+  return (words[0]![0]! + words[1]![0]!).toUpperCase();
+}
+
+/** Provider monogram — no third-party logos are bundled. */
+function ProviderMark({ provider, active = false }: { provider: string; active?: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "grid size-9 shrink-0 place-items-center rounded-[8px] border font-mono text-[0.68rem] font-semibold tracking-[0.06em]",
+        active ? "border-mint/40 bg-mint/10 text-mint" : "border-hairline bg-obsidian text-silver",
+      )}
+    >
+      {initials(provider)}
+    </span>
+  );
+}
+
+function metaLine(display: Display, isDefault: boolean): string {
+  return [display.provider, display.detail, isDefault ? "default" : null].filter(Boolean).join(" · ");
+}
 
 /**
  * AI model switcher (workspace). Choosing a model only changes which
  * allowlisted model drafts and explains — output stays untrusted and the
  * deterministic verifier, simulation and signing gate are unaffected.
+ * The value is always the exact model id the server allowlists.
  */
 export function ModelSwitcher({ ai, disabled }: { ai: AiModelsState; disabled: boolean }) {
   if (ai.status === "off") {
@@ -19,62 +54,132 @@ export function ModelSwitcher({ ai, disabled }: { ai: AiModelsState; disabled: b
     );
   }
 
+  const ready = ai.status === "ready";
+  const selected = ai.models.find((model) => model.id === ai.selectedModel) ?? null;
+  const selectedDisplay = selected ? displayOf(selected) : null;
+  const placeholder = ai.status === "loading" ? "Loading models…" : "Server default model";
+  const defaultOption = ai.models.find((model) => model.isDefault) ?? null;
+
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
+    <div className="space-y-2.5">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <label htmlFor="ai-model" className="text-[0.9rem] font-medium text-white">
           AI model
         </label>
-        {ai.status === "ready" ? (
-          <span className="type-caption">
-            {ai.models.length} available · default: {ai.labelFor(ai.defaultModel)}
+        {ready ? (
+          <span className="type-meta normal-case tracking-[0.04em]">
+            {ai.models.length} available{defaultOption ? ` · default: ${displayOf(defaultOption).name}` : ""}
           </span>
         ) : null}
       </div>
-      <select
-        id="ai-model"
-        value={ai.selectedModel ?? ""}
-        disabled={disabled || ai.status !== "ready"}
-        aria-describedby="ai-model-hint"
-        onChange={(event) => ai.select(event.target.value)}
-        className={cn(
-          "min-h-11 w-full rounded-[var(--radius-control)] border border-hairline bg-obsidian/70 px-3 text-[0.925rem] text-white",
-          "hover:border-silver/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mint disabled:cursor-not-allowed disabled:opacity-60",
-        )}
-      >
-        {ai.status === "loading" ? <option value="">Loading models…</option> : null}
-        {ai.status === "unknown" ? <option value="">Server default model</option> : null}
-        {ai.models.map((model) => (
-          <option key={model.id} value={model.id}>
-            {model.label}
-            {model.isDefault ? " — default" : ""}
-          </option>
-        ))}
-      </select>
+
+      <Select.Root value={ai.selectedModel ?? undefined} onValueChange={ai.select} disabled={disabled || !ready}>
+        <Select.Trigger
+          id="ai-model"
+          aria-describedby="ai-model-hint"
+          className={cn(
+            "model-trigger group flex min-h-14 w-full items-center gap-3 rounded-[12px] border border-hairline bg-obsidian/70 px-3 py-2.5 text-left",
+            "transition-[border-color,background-color] duration-200 hover:border-silver/35 hover:bg-obsidian",
+            "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mint",
+            "data-[state=open]:border-mint/45 disabled:cursor-not-allowed disabled:opacity-60",
+          )}
+        >
+          {selectedDisplay ? <ProviderMark provider={selectedDisplay.provider} active /> : <ProviderMark provider="AI" />}
+          <span className="min-w-0 flex-1">
+            <Select.Value placeholder={placeholder}>
+              {selectedDisplay ? (
+                <span className="block min-w-0">
+                  <span className="block truncate text-[0.95rem] font-medium text-white" title={selectedDisplay.name}>
+                    {selectedDisplay.name}
+                  </span>
+                  <span className="mt-0.5 block truncate font-mono text-[0.6875rem] tracking-[0.04em] text-muted">
+                    {metaLine(selectedDisplay, Boolean(selected?.isDefault))}
+                  </span>
+                </span>
+              ) : null}
+            </Select.Value>
+          </span>
+          <Select.Icon asChild>
+            <ChevronDown
+              className="size-4 shrink-0 text-muted transition-transform duration-200 group-data-[state=open]:rotate-180 group-data-[state=open]:text-mint"
+              aria-hidden
+            />
+          </Select.Icon>
+        </Select.Trigger>
+
+        <Select.Portal>
+          <Select.Content
+            position="popper"
+            side="bottom"
+            align="start"
+            sideOffset={8}
+            collisionPadding={16}
+            className={cn(
+              "model-menu z-50 w-[var(--radix-select-trigger-width)] max-w-[calc(100vw-32px)] overflow-hidden rounded-[14px] border border-hairline",
+              "bg-carbon/95 shadow-[0_28px_70px_-24px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl",
+            )}
+            style={{ maxHeight: "min(420px, var(--radix-select-content-available-height))" }}
+          >
+            <p className="type-meta border-b border-hairline px-4 py-2.5">Drafts &amp; explanations · untrusted</p>
+            <Select.Viewport className="p-1.5">
+              {ai.models.map((model) => {
+                const display = displayOf(model);
+                return (
+                  <Select.Item
+                    key={model.id}
+                    value={model.id}
+                    textValue={display.name}
+                    className={cn(
+                      "model-option relative flex cursor-pointer select-none items-center gap-3 rounded-[10px] py-2.5 pl-3 pr-9 outline-none",
+                      "transition-colors duration-150 data-[highlighted]:bg-white/[0.045] data-[disabled]:opacity-50",
+                    )}
+                  >
+                    <ProviderMark provider={display.provider} active={model.id === ai.selectedModel} />
+                    <span className="min-w-0 flex-1">
+                      <Select.ItemText>
+                        <span className="block text-[0.925rem] font-medium leading-snug text-white">{display.name}</span>
+                      </Select.ItemText>
+                      <span className="mt-0.5 block font-mono text-[0.6875rem] leading-snug tracking-[0.04em] text-muted">
+                        {metaLine(display, model.isDefault)}
+                      </span>
+                    </span>
+                    <Select.ItemIndicator className="absolute right-3 top-1/2 -translate-y-1/2 text-mint">
+                      <Check className="size-4" aria-hidden />
+                    </Select.ItemIndicator>
+                  </Select.Item>
+                );
+              })}
+            </Select.Viewport>
+          </Select.Content>
+        </Select.Portal>
+      </Select.Root>
+
       <p id="ai-model-hint" className="type-caption">
-        Only changes who drafts and explains (untrusted). Approval, verification, simulation and signing are deterministic and
-        unaffected. Requests go to the selected third-party model via OpenRouter — never include seed phrases or private keys.
+        Changes only who drafts and explains — that output stays untrusted. Approval, verification, simulation and signing are
+        deterministic and unaffected. Requests go to the selected model via OpenRouter; never include seed phrases or private keys.
       </p>
     </div>
   );
 }
 
-/** Compact active-model indicator for the panel header. */
+/** Active-model indicator for the panel header (a status line, not a pill). */
 export function ActiveModelBadge({ ai }: { ai: AiModelsState }) {
   const off = ai.status === "off";
   const label = off ? "AI off · manual entry" : ai.status === "loading" ? "Loading AI models…" : ai.labelFor(ai.selectedModel);
+  const selected = ai.models.find((model) => model.id === ai.selectedModel);
+  const shortName = selected ? displayOf(selected).name : label;
   return (
     <span
       role="status"
       aria-label={off ? "AI drafting is off" : `Active AI model: ${label}`}
       title={ai.selectedModel ?? undefined}
       className={cn(
-        "inline-flex max-w-full items-center gap-2 rounded-full border px-2.5 py-1 font-mono text-[0.72rem] uppercase tracking-[0.06em]",
-        off ? "border-hairline text-muted" : "border-mint/35 bg-mint/10 text-mint",
+        "inline-flex min-w-0 max-w-full items-center gap-2 font-mono text-[0.6875rem] font-medium uppercase tracking-[0.14em]",
+        off ? "text-muted" : "text-mint",
       )}
     >
-      <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", off ? "bg-muted" : "bg-mint")} />
-      <span className="truncate">{off ? label : `AI · ${label}`}</span>
+      <span aria-hidden className={cn("model-live-dot size-1.5 shrink-0 rounded-full", off ? "bg-muted" : "bg-mint")} data-live={off ? "false" : "true"} />
+      <span className="truncate">{off ? label : `AI · ${shortName}`}</span>
     </span>
   );
 }

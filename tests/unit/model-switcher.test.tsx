@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { ActiveModelBadge, ModelSwitcher } from "@/features/intent/components/model-switcher";
 import { useAiModels } from "@/features/intent/hooks/use-ai-models";
 
@@ -9,8 +9,8 @@ const MODELS = {
   available: true,
   defaultModel: "a/one",
   models: [
-    { id: "a/one", label: "One · A", isDefault: true },
-    { id: "b/two", label: "Two · B", isDefault: false },
+    { id: "a/one", label: "One · A", isDefault: true, name: "One", provider: "A", detail: null },
+    { id: "b/two", label: "Two · B", isDefault: false, name: "Two", provider: "B", detail: null },
   ],
 };
 
@@ -32,17 +32,48 @@ function stubModels(body: unknown, ok = true) {
   );
 }
 
+/** jsdom gaps that Radix Select relies on. */
+beforeAll(() => {
+  const proto = window.HTMLElement.prototype as unknown as Record<string, unknown>;
+  proto.hasPointerCapture ??= () => false;
+  proto.releasePointerCapture ??= () => undefined;
+  proto.setPointerCapture ??= () => undefined;
+  proto.scrollIntoView ??= () => undefined;
+  (globalThis as unknown as { ResizeObserver?: unknown }).ResizeObserver ??= class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+});
+
 describe("ModelSwitcher (workspace)", () => {
   beforeEach(() => window.localStorage.clear());
+
+  it("falls back to the plain label for older payloads without display fields", async () => {
+    stubModels({ available: true, defaultModel: "a/one", models: [{ id: "a/one", label: "One · A", isDefault: true }] });
+    render(<Harness />);
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "AI model" })).toHaveTextContent("One · A"));
+  });
   afterEach(() => vi.unstubAllGlobals());
 
   it("selects the server default and shows it as the active model", async () => {
     stubModels(MODELS);
     render(<Harness />);
     await waitFor(() => expect(screen.getByTestId("selected")).toHaveTextContent("a/one"));
-    expect(screen.getByRole("combobox", { name: "AI model" })).toHaveValue("a/one");
+    const trigger = screen.getByRole("combobox", { name: "AI model" });
+    expect(trigger).toHaveTextContent("One");
+    expect(trigger).toHaveTextContent("default");
     expect(screen.getByRole("status", { name: "Active AI model: One · A" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "One · A — default" })).toBeInTheDocument();
+
+    const user = userEvent.setup();
+    trigger.focus();
+    await user.keyboard("{Enter}");
+    const option = await screen.findByRole("option", { name: "One" });
+    expect(option).toHaveAttribute("data-state", "checked");
+    expect(screen.getByRole("option", { name: "Two" })).toHaveAttribute("data-state", "unchecked");
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+    expect(trigger).toHaveFocus();
   });
 
   it("switching updates the indicator and persists the choice", async () => {
@@ -50,8 +81,11 @@ describe("ModelSwitcher (workspace)", () => {
     const user = userEvent.setup();
     render(<Harness />);
     await waitFor(() => expect(screen.getByTestId("selected")).toHaveTextContent("a/one"));
-    await user.selectOptions(screen.getByRole("combobox", { name: "AI model" }), "b/two");
-    expect(screen.getByTestId("selected")).toHaveTextContent("b/two");
+    screen.getByRole("combobox", { name: "AI model" }).focus();
+    await user.keyboard("{Enter}");
+    await screen.findByRole("listbox");
+    await user.keyboard("{ArrowDown}{Enter}");
+    await waitFor(() => expect(screen.getByTestId("selected")).toHaveTextContent("b/two"));
     expect(screen.getByRole("status", { name: "Active AI model: Two · B" })).toBeInTheDocument();
     expect(window.localStorage.getItem("intentshield:ai-model")).toBe("b/two");
   });
@@ -80,7 +114,7 @@ describe("ModelSwitcher (workspace)", () => {
   it("falls back to the server default when the list cannot be loaded", async () => {
     stubModels(null, false);
     render(<Harness />);
-    await waitFor(() => expect(screen.getByRole("option", { name: "Server default model" })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "AI model" })).toHaveTextContent("Server default model"));
     expect(screen.getByRole("combobox", { name: "AI model" })).toBeDisabled();
     expect(screen.getByTestId("selected")).toHaveTextContent("none");
   });

@@ -5,6 +5,13 @@ import { installTestWallet } from "./support/test-wallet";
 
 const RECIPIENT = "FsNiTa4NXvM7mNyiqeGw7FaYgub6g6VHmxzkSo4i5eXL";
 
+/** The switcher is a Radix Select (combobox + listbox), not a native <select>. */
+async function chooseModel(page: Page, name: string) {
+  await page.getByRole("combobox", { name: "AI model" }).click();
+  await page.getByRole("option", { name }).click();
+  await expect(page.getByRole("listbox")).toHaveCount(0);
+}
+
 async function connect(page: Page) {
   await page.getByRole("button", { name: /Connect wallet/ }).click();
   await page.getByRole("button", { name: /IntentShield Test Wallet/ }).click();
@@ -70,11 +77,16 @@ test.describe("AI model switcher (workspace)", () => {
 
     await page.goto("/app");
     const select = page.getByRole("combobox", { name: "AI model" });
-    await expect(select).toHaveValue("a/one");
+    await expect(select).toContainText("One · A");
+    await expect(select).toContainText("default");
     await expect(page.getByRole("status", { name: "Active AI model: One · A" })).toBeVisible();
-    await expect(page.getByRole("option", { name: "One · A — default" })).toBeAttached();
+    await select.click();
+    await expect(page.getByRole("option", { name: "One · A" })).toHaveAttribute("data-state", "checked");
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("listbox")).toHaveCount(0);
+    await expect(select).toBeFocused();
 
-    await select.selectOption("b/two");
+    await chooseModel(page, "Two · B");
     await expect(page.getByRole("status", { name: "Active AI model: Two · B" })).toBeVisible();
 
     await page.getByLabel("Describe the transfer").fill(`Send 0.1 SOL to ${RECIPIENT}`);
@@ -85,7 +97,7 @@ test.describe("AI model switcher (workspace)", () => {
     await expect(page.getByLabel("Recipient address (full)")).toHaveValue(RECIPIENT);
 
     await page.reload();
-    await expect(page.getByRole("combobox", { name: "AI model" })).toHaveValue("b/two");
+    await expect(page.getByRole("combobox", { name: "AI model" })).toContainText("Two · B");
   });
 
   test("switching models never changes verification or the signing gate", async ({ page }) => {
@@ -93,7 +105,7 @@ test.describe("AI model switcher (workspace)", () => {
     await mockDevnetRpc(page);
     await mockAiModels(page);
     await page.goto("/app");
-    await expect(page.getByRole("combobox", { name: "AI model" })).toHaveValue("a/one");
+    await expect(page.getByRole("combobox", { name: "AI model" })).toContainText("One · A");
     await connect(page);
 
     await page.getByLabel("Amount (SOL)").fill("0.1");
@@ -104,8 +116,8 @@ test.describe("AI model switcher (workspace)", () => {
     await expect(sign).toBeEnabled();
     const fingerprint = await page.locator("#inspector-heading").locator("xpath=..").locator("[title^='sha256:']").getAttribute("title");
 
-    for (const model of ["b/two", "c/three", "a/one"]) {
-      await page.getByRole("combobox", { name: "AI model" }).selectOption(model);
+    for (const model of ["Two · B", "Three · C", "One · A"]) {
+      await chooseModel(page, model);
       await expect(page.getByText(/Intent Matched/)).toBeVisible();
       await expect(page.getByRole("table", { name: /Approved intent compared/ }).getByText("Changed")).toHaveCount(0);
       await expect(sign).toBeEnabled();
