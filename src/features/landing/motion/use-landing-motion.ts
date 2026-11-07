@@ -18,6 +18,39 @@ export function useLandingMotion(rootRef: RefObject<HTMLElement | null>) {
     let cancelled = false;
     let revert: (() => void) | null = null;
 
+    // Smooth scrolling stays off until the page has settled (see globals.css): a smooth
+    // initial #hash jump keeps animating past every re-alignment below.
+    document.documentElement.removeAttribute("data-smooth-scroll");
+
+    // Pinning and ScrollTrigger refreshes change the page height after the browser
+    // has already jumped to a #hash (on load or from a quick nav click). Remember
+    // that, and whether the visitor scrolled by hand, to re-align afterwards.
+    let hashNavigated = Boolean(window.location.hash);
+    let userScrolled = false;
+    const onHashChange = () => {
+      hashNavigated = true;
+    };
+    const onUserScroll = () => {
+      userScrolled = true;
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End", " "].includes(event.key)) userScrolled = true;
+    };
+    window.addEventListener("hashchange", onHashChange);
+    window.addEventListener("wheel", onUserScroll, { passive: true });
+    window.addEventListener("touchmove", onUserScroll, { passive: true });
+    window.addEventListener("keydown", onKey);
+    let stopRealigning: (() => void) | null = null;
+    const stopWatching = () => {
+      document.documentElement.setAttribute("data-smooth-scroll", "");
+      window.removeEventListener("hashchange", onHashChange);
+      window.removeEventListener("wheel", onUserScroll);
+      window.removeEventListener("touchmove", onUserScroll);
+      window.removeEventListener("keydown", onKey);
+      stopRealigning?.();
+      stopRealigning = null;
+    };
+
     void (async () => {
       try {
         const [{ gsap }, { ScrollTrigger }, { SplitText }] = await Promise.all([
@@ -50,6 +83,27 @@ export function useLandingMotion(rootRef: RefObject<HTMLElement | null>) {
         });
 
         revert = () => mm.revert();
+
+        // Every refresh in the settling period (fonts, load event, pin spacers) can move
+        // the hash target; follow it until the visitor scrolls or the page has settled.
+        const realign = () => {
+          if (!hashNavigated || userScrolled || !window.location.hash) return;
+          let id = window.location.hash.slice(1);
+          try {
+            id = decodeURIComponent(id);
+          } catch {
+            // A malformed escape in the URL: look the raw fragment up instead.
+          }
+          document.getElementById(id)?.scrollIntoView({ behavior: "instant", block: "start" });
+        };
+        ScrollTrigger.addEventListener("refresh", realign);
+        const settle = window.setTimeout(() => stopWatching(), 4000);
+        stopRealigning = () => {
+          window.clearTimeout(settle);
+          ScrollTrigger.removeEventListener("refresh", realign);
+        };
+        ScrollTrigger.refresh();
+        realign();
       } catch {
         // Motion is progressive enhancement: failure leaves the static page intact.
       }
@@ -57,6 +111,7 @@ export function useLandingMotion(rootRef: RefObject<HTMLElement | null>) {
 
     return () => {
       cancelled = true;
+      stopWatching();
       revert?.();
     };
   }, [rootRef]);

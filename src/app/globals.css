@@ -155,8 +155,11 @@
   }
 }
 
+/* Smooth anchor scrolling is switched on only once a page has settled: an
+ * animated initial #hash jump would keep running while fonts, pins and splits
+ * change the layout, and land in the wrong place. */
 @media (prefers-reduced-motion: no-preference) {
-  html {
+  html[data-smooth-scroll] {
     scroll-behavior: smooth;
   }
 }
