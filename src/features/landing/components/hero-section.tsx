@@ -60,7 +60,7 @@ export function HeroSection() {
                 </a>
               </Button>
             </div>
-            <div className="border-t border-hairline/80">
+            <div className="hero-trust-frame border-t border-hairline/80">
               <ul className="hero-trust" aria-label="What IntentShield is">
                 {HERO_COPY.trust.map((item) => (
                   <li key={item.label} className="hero-trust-item border-b border-hairline/80 sm:border-b-0">
@@ -70,8 +70,8 @@ export function HeroSection() {
                         className="group flex min-h-14 w-full items-center gap-3 whitespace-nowrap py-3 text-left"
                         aria-label={`${item.label}: ${item.detail}`}
                       >
-                        <span aria-hidden className="h-px w-4 shrink-0 bg-mint" />
-                        <span className="text-[0.9rem] text-silver underline decoration-hairline decoration-dotted underline-offset-[5px] transition-colors group-hover:text-white group-hover:decoration-mint/70">
+                        <span aria-hidden className="hero-trust-mark h-px w-4 shrink-0 bg-mint" />
+                        <span className="hero-trust-label text-[0.9rem] text-silver underline decoration-hairline decoration-dotted underline-offset-[5px] transition-colors group-hover:text-white group-hover:decoration-mint/70">
                           {item.label}
                         </span>
                       </button>

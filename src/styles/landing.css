@@ -186,12 +186,18 @@
 }
 
 /*
- * Hero trust facts. Phones: a ruled list. Wider: one line with vertical rules
- * that may wrap (the hero column is narrow from 1024 px up). Each rule sits
- * centred in the gap on an item's LEFT, so no rule ever trails a line; the rule
- * that would open a line falls outside the list and is clipped, so every line
- * starts flush. The 0.375rem inline padding keeps focus rings unclipped.
+ * Hero trust facts. Phones: a ruled list. Wider: one line with vertical rules.
+ * The hero column is only ~23–30rem wide from 1024 px up, where the full row
+ * (dash markers, wide gaps) needs ~30rem; there a compact row (no dash markers,
+ * tighter gaps) keeps all three facts on one line with room to spare.
+ * Wrapping stays as the fallback (e.g. very large user font sizes): each rule
+ * sits centred in the gap on an item's LEFT, so no rule ever trails a line; the
+ * rule that would open a line falls outside the list and is clipped, so every
+ * line starts flush. The 0.375rem inline padding keeps focus rings unclipped.
  */
+.hero-trust-frame {
+  container: hero-trust / inline-size;
+}
 .hero-trust {
   display: grid;
 }
@@ -215,6 +221,18 @@
     left: calc(var(--trust-gap) / -2);
     width: 1px;
     background: color-mix(in oklab, var(--color-hairline) 80%, transparent);
+  }
+  /* After the rules above: same specificity, so the compact values must come last. */
+  @container hero-trust (max-width: 30.99rem) {
+    .hero-trust {
+      --trust-gap: 1.5rem;
+    }
+    .hero-trust-mark {
+      display: none;
+    }
+    .hero-trust-label {
+      font-size: 0.875rem;
+    }
   }
 }
 
