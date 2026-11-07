@@ -50,6 +50,21 @@ test.describe("landing CTAs and navigation (LP-02…LP-04, PRD §31)", () => {
     await expect(nav.getByRole("link", { name: /GitHub/ })).toHaveAttribute("href", "https://github.com/lidxgoesgiri/IntentShield");
   });
 
+  test("deep links land with the section at the top after motion setup (pins, splits, refreshes)", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    for (const id of ["product", "security", "stack", "developers"]) {
+      // A fresh document each time: a hash-only goto would be a same-document jump.
+      await page.goto("about:blank");
+      await page.goto(`/#${id}`);
+      // The motion layer turns smooth scrolling on once its settling window is over.
+      await page.waitForFunction(() => document.documentElement.hasAttribute("data-smooth-scroll"), null, { timeout: 15_000 });
+      await page.waitForTimeout(400);
+      const top = await page.locator(`#${id}`).evaluate((section) => section.getBoundingClientRect().top);
+      expect(top, `#${id} top`).toBeGreaterThanOrEqual(0);
+      expect(top, `#${id} top`).toBeLessThan(200);
+    }
+  });
+
   test("final CTA distinguishes real app vs demo", async ({ page }) => {
     await page.goto("/");
     const final = page.locator("#get-started");

@@ -40,7 +40,7 @@ export function setupHeroScroll(gsap: Gsap, root: HTMLElement, desktop: boolean)
   }
 }
 
-type SplitVariant = "lines" | "words" | "chars" | "scrub";
+type SplitVariant = "lines" | "words" | "chars" | "scrub" | "flip";
 
 /**
  * Section headlines: masked SplitText reveals, deliberately varied per section
@@ -63,6 +63,18 @@ export function setupHeadlineReveals(gsap: Gsap, SplitText: SplitTextClass, root
         }
         if (variant === "chars") {
           return gsap.from(self.chars, { yPercent: 110, opacity: 0, duration: 0.8, ease: "power4.out", stagger: { each: 0.016, from: "start" }, scrollTrigger: trigger });
+        }
+        if (variant === "flip") {
+          return gsap.from(self.lines, {
+            yPercent: 105,
+            rotateX: -58,
+            transformPerspective: 900,
+            transformOrigin: "50% 100%",
+            duration: 1.25,
+            ease: "expo.out",
+            stagger: 0.13,
+            scrollTrigger: trigger,
+          });
         }
         if (variant === "scrub") {
           return gsap.fromTo(
@@ -127,4 +139,47 @@ export function setupProductReveal(gsap: Gsap, root: HTMLElement, desktop: boole
     { rotateX: 16, yPercent: 8, scale: 0.9, transformPerspective: 1700, transformOrigin: "50% 100%" },
     { rotateX: 0, yPercent: 0, scale: 1, ease: "none", scrollTrigger: { trigger: frame, start: "top 98%", end: "top 30%", scrub: 0.8 } },
   );
+}
+
+/**
+ * Stack interlude: the two rails enter from opposite sides behind a clip
+ * reveal, then the headline recedes and the band dims as the product section
+ * takes over. Only the row wrappers and the heading block are animated here —
+ * the strips inside are moved by the rail's own loop, so no transform is
+ * driven by two engines.
+ */
+export function setupRailMotion(gsap: Gsap, root: HTMLElement, desktop: boolean): void {
+  const section = root.querySelector<HTMLElement>("#stack");
+  if (!section) return;
+  const upper = section.querySelector<HTMLElement>('[data-rail-row="upper"]');
+  const lower = section.querySelector<HTMLElement>('[data-rail-row="lower"]');
+  const head = section.querySelector<HTMLElement>("[data-rail-head]");
+  const shift = desktop ? 9 : 5;
+
+  const enter = gsap.timeline({ scrollTrigger: { trigger: section, start: "top 78%", once: true } });
+  if (upper) {
+    enter.fromTo(
+      upper,
+      { xPercent: shift, clipPath: "inset(0% 0% 0% 100%)" },
+      { xPercent: 0, clipPath: "inset(0% 0% 0% 0%)", duration: 1.35, ease: "expo.out", clearProps: "clipPath" },
+      0.2,
+    );
+  }
+  if (lower) {
+    enter.fromTo(
+      lower,
+      { xPercent: -shift, clipPath: "inset(0% 100% 0% 0%)" },
+      { xPercent: 0, clipPath: "inset(0% 0% 0% 0%)", duration: 1.35, ease: "expo.out", clearProps: "clipPath" },
+      0.38,
+    );
+  }
+
+  const exit = gsap.timeline({
+    defaults: { ease: "none" },
+    // Starts only once the product section owns the lower half of the screen.
+    scrollTrigger: { trigger: section, start: "bottom 55%", end: "bottom top", scrub: 0.6 },
+  });
+  if (head) exit.to(head, { yPercent: desktop ? -12 : -6, scale: desktop ? 0.94 : 0.97, transformOrigin: "0% 0%" }, 0);
+  const rows = [upper, lower].filter((row): row is HTMLElement => Boolean(row));
+  if (rows.length > 0) exit.to(rows, { opacity: 0.5 }, 0.2);
 }
