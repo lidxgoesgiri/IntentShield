@@ -69,6 +69,31 @@ test.describe("responsive layout (LP-15, LP-16, §18 matrix)", () => {
     for (const right of rights) expect(right).toBeLessThanOrEqual(320);
   });
 
+  test("hero trust facts wrap cleanly: every line starts flush, nothing overflows the column", async ({ page }) => {
+    // 1024–1280 and 1920 px wrap the row in the narrow hero column; 768 and 1440 fit on one line.
+    for (const width of [768, 1024, 1280, 1440, 1920]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto("/");
+      const layout = await page.locator("#hero .hero-trust").evaluate((list) => {
+        const column = list.parentElement!.getBoundingClientRect();
+        const items = Array.from(list.querySelectorAll("button")).map((button) => button.getBoundingClientRect());
+        const lineStarts = new Map<number, number>();
+        for (const box of items) {
+          const top = Math.round(box.top);
+          if (!lineStarts.has(top)) lineStarts.set(top, box.left - column.left);
+        }
+        return {
+          lines: lineStarts.size,
+          starts: Array.from(lineStarts.values()),
+          maxRight: Math.max(...items.map((box) => box.right - column.right)),
+        };
+      });
+      for (const start of layout.starts) expect(Math.abs(start), `${width}px line start`).toBeLessThanOrEqual(1);
+      expect(layout.maxRight, `${width}px right edge`).toBeLessThanOrEqual(1);
+      if (width === 1280) expect(layout.lines, "1280px wraps").toBeGreaterThan(1);
+    }
+  });
+
   test("captures evidence screenshots (desktop/tablet/mobile/reduced motion/warning)", async ({ browser }) => {
     mkdirSync(SHOTS, { recursive: true });
     const sizes = [

@@ -185,6 +185,39 @@
   }
 }
 
+/*
+ * Hero trust facts. Phones: a ruled list. Wider: one line with vertical rules
+ * that may wrap (the hero column is narrow from 1024 px up). Each rule sits
+ * centred in the gap on an item's LEFT, so no rule ever trails a line; the rule
+ * that would open a line falls outside the list and is clipped, so every line
+ * starts flush. The 0.375rem inline padding keeps focus rings unclipped.
+ */
+.hero-trust {
+  display: grid;
+}
+@media (min-width: 40rem) {
+  .hero-trust {
+    --trust-gap: 2.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: var(--trust-gap);
+    margin-inline: -0.375rem;
+    padding-inline: 0.375rem;
+    overflow-x: clip;
+  }
+  .hero-trust-item {
+    position: relative;
+  }
+  .hero-trust-item::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: calc(var(--trust-gap) / -2);
+    width: 1px;
+    background: color-mix(in oklab, var(--color-hairline) 80%, transparent);
+  }
+}
+
 /* Signature ribbon: the static frame is complete; motion only moves it. */
 .signature-ribbon {
   overflow: visible;

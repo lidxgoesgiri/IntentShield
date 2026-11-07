@@ -60,24 +60,26 @@ export function HeroSection() {
                 </a>
               </Button>
             </div>
-            <ul className="hero-trust grid border-t border-hairline/80 sm:flex sm:flex-wrap" aria-label="What IntentShield is">
-              {HERO_COPY.trust.map((item) => (
-                <li key={item.label} className="border-b border-hairline/80 sm:border-b-0 sm:border-r sm:pr-5 sm:[&:not(:first-child)]:pl-5 last:border-r-0 last:pr-0">
-                  <Tooltip content={item.detail}>
-                    <button
-                      type="button"
-                      className="group flex min-h-14 w-full items-center gap-3 whitespace-nowrap py-3 text-left"
-                      aria-label={`${item.label}: ${item.detail}`}
-                    >
-                      <span aria-hidden className="h-px w-4 shrink-0 bg-mint" />
-                      <span className="text-[0.9rem] text-silver underline decoration-hairline decoration-dotted underline-offset-[5px] transition-colors group-hover:text-white group-hover:decoration-mint/70">
-                        {item.label}
-                      </span>
-                    </button>
-                  </Tooltip>
-                </li>
-              ))}
-            </ul>
+            <div className="border-t border-hairline/80">
+              <ul className="hero-trust" aria-label="What IntentShield is">
+                {HERO_COPY.trust.map((item) => (
+                  <li key={item.label} className="hero-trust-item border-b border-hairline/80 sm:border-b-0">
+                    <Tooltip content={item.detail}>
+                      <button
+                        type="button"
+                        className="group flex min-h-14 w-full items-center gap-3 whitespace-nowrap py-3 text-left"
+                        aria-label={`${item.label}: ${item.detail}`}
+                      >
+                        <span aria-hidden className="h-px w-4 shrink-0 bg-mint" />
+                        <span className="text-[0.9rem] text-silver underline decoration-hairline decoration-dotted underline-offset-[5px] transition-colors group-hover:text-white group-hover:decoration-mint/70">
+                          {item.label}
+                        </span>
+                      </button>
+                    </Tooltip>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
 
           {/* Visual: core + labeled demo samples. */}
