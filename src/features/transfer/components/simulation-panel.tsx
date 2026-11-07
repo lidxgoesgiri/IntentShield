@@ -32,17 +32,18 @@ export function SimulationPanel({ running, result }: { running: boolean; result:
               title={result.status === "failed" ? "Simulation failed — signing disabled" : "Simulation unavailable — signing disabled"}
             >
               {result.error}
-              {result.errorCode ? <code className="ml-2 font-mono text-[0.75rem] text-muted">{result.errorCode}</code> : null}
+              {result.errorCode ? <code className="ml-2 font-mono text-[0.8125rem] text-muted">{result.errorCode}</code> : null}
             </Alert>
           )}
           <dl className="grid grid-cols-2 gap-3 text-[0.85rem] sm:grid-cols-3">
-            <Stat label="Network fee" value={result.feeLamports !== undefined ? `${formatLamportsAsSol(result.feeLamports)} SOL` : "—"} />
+            <Stat label="Estimated fee" value={result.feeLamports !== undefined ? `${formatLamportsAsSol(result.feeLamports)} SOL` : "—"} />
             <Stat label="Balance (RPC)" value={result.balanceLamports !== undefined ? `${formatLamportsAsSol(result.balanceLamports)} SOL` : "—"} />
             <Stat label="Compute units" value={result.unitsConsumed !== undefined ? result.unitsConsumed.toString() : "—"} />
           </dl>
+          {result.feeLamports !== undefined ? <p className="type-caption">RPC estimate for these exact transaction bytes, including the fixed priority fee. Your wallet shows its own preview; the receipt reports the actual on-chain fee.</p> : null}
           {result.logs.length > 0 ? (
             <Disclosure summary={`Simulation logs (${result.logs.length})`}>
-              <pre className="font-data max-h-48 overflow-auto whitespace-pre-wrap text-[0.8rem] text-muted">{result.logs.join("\n")}</pre>
+              <pre className="font-data max-h-48 overflow-auto whitespace-pre-wrap text-[0.8125rem] text-muted">{result.logs.join("\n")}</pre>
             </Disclosure>
           ) : null}
         </>

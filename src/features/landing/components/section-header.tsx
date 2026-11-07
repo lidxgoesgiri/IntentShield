@@ -25,14 +25,14 @@ export function SectionHeader({
   children?: ReactNode;
 }) {
   return (
-    <div className={cn("grid gap-10 lg:grid-cols-12 lg:gap-8", className)}>
+    <div className={cn("grid gap-6 lg:grid-cols-12 lg:gap-8", className)}>
       <div className="lg:col-span-8">
         <p className="type-eyebrow flex items-center gap-3">
           <span className="text-mint">{index}</span>
           <span aria-hidden className="h-px w-10 origin-left bg-hairline" data-reveal="line" />
           <span>{eyebrow}</span>
         </p>
-        <h2 id={titleId} className="type-h2 mt-7 max-w-[15ch]" data-split={split}>
+        <h2 id={titleId} className="type-h2 mt-5 max-w-[15ch]" data-split={split}>
           {title}
         </h2>
       </div>

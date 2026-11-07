@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchAiModels, readStoredModel, storeModel } from "../lib/ai-models-client";
+import { describeModelDisplay, formatModelLabel } from "../lib/model-display";
 import type { AiModelsResponse } from "../schema";
 
 export type AiModelOption = AiModelsResponse["models"][number];
@@ -14,6 +15,7 @@ export type AiModelsState = Readonly<{
   /** The model the next AI request will ask for (null → server default). */
   selectedModel: string | null;
   select: (id: string) => void;
+  retry: () => void;
   labelFor: (id: string | null | undefined) => string;
 }>;
 
@@ -27,6 +29,7 @@ export function useAiModels(): AiModelsState {
   const [models, setModels] = useState<readonly AiModelOption[]>([]);
   const [defaultModel, setDefaultModel] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
+  const [loadNonce, setLoadNonce] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -34,11 +37,17 @@ export function useAiModels(): AiModelsState {
       .then((result) => {
         if (controller.signal.aborted) return;
         if (!result.ok) {
+          setModels([]);
+          setDefaultModel(null);
+          setSelectedModel(null);
           setStatus("unknown");
           return;
         }
         const { data } = result;
         if (!data.available || data.models.length === 0) {
+          setModels([]);
+          setDefaultModel(null);
+          setSelectedModel(null);
           setStatus("off");
           return;
         }
@@ -47,8 +56,15 @@ export function useAiModels(): AiModelsState {
         setSelectedModel(readStoredModel(data.models) ?? data.defaultModel);
         setStatus("ready");
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!controller.signal.aborted) setStatus("unknown");
+      });
     return () => controller.abort();
+  }, [loadNonce]);
+
+  const retry = useCallback(() => {
+    setStatus("loading");
+    setLoadNonce((nonce) => nonce + 1);
   }, []);
 
   const select = useCallback(
@@ -63,13 +79,13 @@ export function useAiModels(): AiModelsState {
   const labelFor = useCallback(
     (id: string | null | undefined) => {
       if (!id) return "server default";
-      return models.find((model) => model.id === id)?.label ?? id;
+      return models.find((model) => model.id === id)?.label ?? formatModelLabel(describeModelDisplay(id));
     },
     [models],
   );
 
   return useMemo(
-    () => ({ status, models, defaultModel, selectedModel, select, labelFor }),
-    [status, models, defaultModel, selectedModel, select, labelFor],
+    () => ({ status, models, defaultModel, selectedModel, select, retry, labelFor }),
+    [status, models, defaultModel, selectedModel, select, retry, labelFor],
   );
 }

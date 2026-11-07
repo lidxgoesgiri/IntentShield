@@ -35,6 +35,7 @@ export async function submitSignedTransfer(
   }
 
   try {
+    options.signal?.throwIfAborted();
     const returned = await rpc.sendTransaction(signed.wireBase64, options.signal);
     if (returned !== signed.signature) {
       return {
@@ -46,8 +47,15 @@ export async function submitSignedTransfer(
     return { kind: "submitted", signature: signed.signature };
   } catch (error) {
     const classified = classifyRpcError(error);
-    if (classified.kind === "rpc") {
+    if (classified.kind === "rpc" && classified.transactionError !== null && classified.transactionError !== undefined) {
       const described = describeTransactionError(classified.transactionError);
+      if (classified.transactionError === "AlreadyProcessed") {
+        return {
+          kind: "unknown",
+          signature: signed.signature,
+          message: "The RPC reports that this transaction was already processed. Checking the original signature without resending.",
+        };
+      }
       if (described.code === "BLOCKHASH_NOT_FOUND") {
         return { kind: "expired", message: described.message };
       }

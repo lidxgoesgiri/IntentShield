@@ -9,7 +9,7 @@ import { useProductContext } from "../product-context";
  * "Solana Devnet" once the RPC has proven it (PRD: DEVNET labels only on
  * network-backed components).
  */
-export function NetworkBadge({ className }: { className?: string }) {
+export function NetworkBadge({ className, compact = false }: { className?: string; compact?: boolean }) {
   const { devnet, online } = useProductContext();
 
   const view = !online
@@ -25,13 +25,13 @@ export function NetworkBadge({ className }: { className?: string }) {
       <span
         tabIndex={0}
         className={cn(
-          "inline-flex min-h-9 items-center gap-2 rounded-full border border-hairline bg-carbon px-3 font-mono text-[0.75rem] uppercase tracking-[0.08em] text-silver",
+          "inline-flex min-h-9 items-center gap-2 rounded-full border border-hairline bg-carbon px-2 font-mono text-[0.8125rem] uppercase tracking-[0.04em] text-silver",
           className,
         )}
         aria-label={`Network: ${view.text}. ${view.tip}`}
       >
         <span aria-hidden className={cn("size-2 rounded-full", view.dot, devnet.state === "checking" && "animate-pulse")} />
-        {view.text}
+        {compact && view.text === "Solana Devnet" ? "Devnet" : view.text}
       </span>
     </Tooltip>
   );

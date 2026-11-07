@@ -1,7 +1,7 @@
 import "server-only";
 import { ExplainRequestSchema, ParseIntentRequestSchema } from "@/features/intent/schema";
 import { errorResponse, isForeignOrigin, jsonResponse, readJsonBody } from "../http";
-import { clientKey, createDailyBudget, createRateLimiter } from "../security/request-limit";
+import { clientKey, createDailyBudget, createRateLimiter, instanceAiProtection, type AiProtection } from "../security/request-limit";
 import { logSafeEvent } from "../security/safe-logging";
 import { AiProviderError, type FetchLike } from "./client";
 import { getAiConfig, type AiConfig } from "./config";
@@ -13,6 +13,7 @@ export type AiHandlerDeps = Readonly<{
   fetchImpl?: FetchLike;
   now?: () => number;
   health?: ModelHealth;
+  protection?: AiProtection;
 }>;
 
 const UNAVAILABLE_MESSAGE = "AI assistance is unavailable. You can still transfer manually.";
@@ -24,27 +25,26 @@ function unavailable(code: string): Response {
 }
 
 /**
- * Factory for the AI route handlers. Limits are created once per factory call
- * (i.e. once per server instance in production). Model health is shared.
+ * Factory for AI route handlers. Production guards and model health are shared
+ * within one process; no claim of a global multi-instance spending cap.
  */
 export function createAiHandlers(deps: AiHandlerDeps = {}) {
   const getConfig = deps.getConfig ?? (() => getAiConfig());
   const health = deps.health ?? sharedModelHealth;
   const initial = getConfig();
-  const limiter = createRateLimiter({
-    limit: initial.requestsPerMinute,
-    windowMs: 60_000,
-    ...(deps.now ? { now: deps.now } : {}),
-  });
-  const budget = createDailyBudget({ budget: initial.dailyBudget, ...(deps.now ? { now: deps.now } : {}) });
+  // Production route modules use a shared process guard. Dependency-injected
+  // factories stay isolated unless a test explicitly supplies shared controls.
+  const { limiter, budget } = deps.protection ?? (Object.keys(deps).length === 0
+    ? instanceAiProtection(initial)
+    : {
+        limiter: createRateLimiter({ limit: initial.requestsPerMinute, windowMs: 60_000, ...(deps.now ? { now: deps.now } : {}) }),
+        budget: createDailyBudget({ budget: initial.dailyBudget, ...(deps.now ? { now: deps.now } : {}) }),
+      });
 
   async function guard(request: Request): Promise<{ ok: true; body: unknown; config: AiConfig } | { ok: false; response: Response }> {
     if (isForeignOrigin(request)) {
       return { ok: false, response: errorResponse(403, "FORBIDDEN", "Cross-origin requests are not allowed.") };
     }
-    const body = await readJsonBody(request);
-    if (!body.ok) return { ok: false, response: body.response };
-
     const decision = limiter.check(clientKey(request));
     if (!decision.allowed) {
       return {
@@ -54,6 +54,8 @@ export function createAiHandlers(deps: AiHandlerDeps = {}) {
         }),
       };
     }
+    const body = await readJsonBody(request);
+    if (!body.ok) return { ok: false, response: body.response };
     const config = getConfig();
     if (!config.configured) return { ok: false, response: unavailable("AI_NOT_CONFIGURED") };
     return { ok: true, body: body.value, config };

@@ -71,8 +71,8 @@ export function WalletConnectButton() {
         >
           {wallets.length === 0 ? (
             <Alert tone="info" title="No Solana wallet detected">
-              Install a Wallet Standard–compatible Solana wallet extension (for example Phantom, Solflare or Backpack), switch it
-              to Devnet, then reload this page.
+              On desktop, use a compatible Solana wallet extension such as Phantom, Solflare or Backpack and enable Devnet.
+              On mobile, open this site inside a compatible wallet browser. If your wallet does not appear here, use a desktop extension.
             </Alert>
           ) : (
             <ul className="space-y-2" aria-label="Available wallets">
@@ -103,7 +103,7 @@ export function WalletConnectButton() {
             </p>
           ) : null}
           <p className="type-caption mt-5">
-            Tip: set your wallet to Devnet / testnet mode so its own preview matches the network IntentShield uses.
+            Your wallet must support signing without sending. Enable Devnet / testnet mode so its preview matches this app.
           </p>
         </Dialog>
       </>

@@ -82,7 +82,7 @@ export function ComparisonRowView({ row }: { row: Row }) {
           </span>
         )}
       </div>
-      <div role="cell" className={cn("flex items-center gap-1.5 font-mono text-[0.75rem] font-medium uppercase tracking-[0.08em]", view.className)}>
+      <div role="cell" className={cn("flex items-center gap-1.5 font-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em]", view.className)}>
         <Icon className="size-4" aria-hidden />
         {view.label}
       </div>

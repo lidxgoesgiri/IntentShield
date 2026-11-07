@@ -13,10 +13,10 @@ const ARCHITECTURE = [
 export function SecurityArchitecture() {
   return (
     <section id="security" data-atmosphere="0.35" aria-labelledby="security-title" className="border-t border-hairline">
-      <div className="page-container py-[clamp(64px,11vw,168px)]">
+      <div className="page-container section-space">
         <SectionHeader index="06" eyebrow="Security architecture" title={SECURITY_COPY.title} titleId="security-title" lead={SECURITY_COPY.lead} split="lines" />
 
-        <div className="mt-16 grid gap-px overflow-hidden rounded-[var(--radius-panel)] border border-hairline bg-hairline lg:mt-24 lg:grid-cols-3">
+        <div className="mt-10 grid gap-px overflow-hidden rounded-[var(--radius-panel)] border border-hairline bg-hairline lg:mt-14 lg:grid-cols-3">
           <Column
             icon={<CircleCheck className="size-5 text-mint" aria-hidden />}
             label="Verified by the app"
@@ -46,7 +46,7 @@ export function SecurityArchitecture() {
                 <li key={node.title} className="relative space-y-3 bg-obsidian p-6">
                   <div className="flex items-center justify-between">
                     <Icon className="size-5 text-mint" aria-hidden />
-                    <span className="font-mono text-[0.72rem] text-muted">{String(index + 1).padStart(2, "0")}</span>
+                    <span className="font-mono text-[0.8125rem] text-muted">{String(index + 1).padStart(2, "0")}</span>
                   </div>
                   <h3 className="font-heading text-lg font-semibold text-white">{node.title}</h3>
                   <p className="text-[0.925rem] text-silver">{node.body}</p>

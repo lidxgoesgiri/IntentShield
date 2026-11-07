@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { MOTION_CONDITIONS } from "../motion/motion-preferences";
+import { useDecorativeMotion } from "../motion/motion-context";
 import {
   centerlinePath,
   HERO_RIBBON_COMPACT_SPEC,
@@ -35,6 +36,7 @@ function strandOpacity(index: number, count: number): number {
  * the cursor. Animation pauses offscreen and in hidden tabs.
  */
 export function SignatureRibbon({ variant, className }: { variant: SignatureRibbonVariant; className?: string }) {
+  const { enabled } = useDecorativeMotion();
   const { spec, viewBox, width } = VARIANTS[variant];
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const gradientId = `${uid}-ribbon-gradient`;
@@ -49,10 +51,20 @@ export function SignatureRibbon({ variant, className }: { variant: SignatureRibb
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg || typeof window === "undefined") return;
-    if (!window.matchMedia(MOTION_CONDITIONS.motion).matches) return;
+    if (!enabled) {
+      strands.forEach((path, index) => {
+        strandRefs.current[index]?.setAttribute("d", path);
+        glowRefs.current[index]?.setAttribute("d", path);
+      });
+      pulseRef.current?.setAttribute("d", pulse);
+      svg.style.setProperty("--ribbon-drift", "0px");
+      svg.dataset.motionActive = "false";
+      return;
+    }
+    svg.dataset.motionActive = "true";
 
     const compact = variant === "compact" || !window.matchMedia(MOTION_CONDITIONS.desktop).matches;
-    const minFrameMs = compact ? 33 : 0;
+    const minFrameMs = 33;
     const section = svg.closest("section") ?? svg;
     let raf = 0;
     let visible = true;
@@ -122,7 +134,7 @@ export function SignatureRibbon({ variant, className }: { variant: SignatureRibb
       window.removeEventListener("pointermove", onPointerMove);
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
     };
-  }, [spec, variant]);
+  }, [spec, variant, enabled, strands, pulse]);
 
   const edgeIndexes = [0, strands.length - 1];
 

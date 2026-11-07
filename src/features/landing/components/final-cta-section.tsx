@@ -9,7 +9,7 @@ export function FinalCTASection() {
   return (
     <section id="get-started" aria-labelledby="final-title" className="relative overflow-hidden border-t border-hairline" data-atmosphere="0.8">
       <div aria-hidden className="landing-ambient landing-hero-paint absolute inset-0 opacity-70" />
-      <div className="page-container relative py-[clamp(80px,13vw,200px)]">
+      <div className="page-container section-space relative">
         <p className="type-eyebrow flex items-center gap-3">
           <span className="text-mint">08</span>
           <span aria-hidden className="h-px w-10 bg-hairline" />

@@ -19,6 +19,7 @@ export function errorResponse(
 }
 
 const MAX_BODY_BYTES = 4_096;
+const BODY_TIMEOUT_MS = 5_000;
 
 export type JsonBodyResult = { ok: true; value: unknown } | { ok: false; response: Response };
 
@@ -28,18 +29,43 @@ export async function readJsonBody(request: Request): Promise<JsonBodyResult> {
   if (!contentType.toLowerCase().includes("application/json")) {
     return { ok: false, response: errorResponse(400, "VALIDATION_ERROR", "Send a JSON body (Content-Type: application/json).") };
   }
-  const declared = Number(request.headers.get("content-length") ?? "0");
-  if (declared > MAX_BODY_BYTES) {
+  const rawLength = request.headers.get("content-length");
+  const declared = rawLength === null ? 0 : Number(rawLength);
+  if (!Number.isSafeInteger(declared) || declared < 0 || declared > MAX_BODY_BYTES) {
     return { ok: false, response: errorResponse(400, "VALIDATION_ERROR", "Request body is too large.") };
   }
-  const text = await request.text();
-  if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) {
-    return { ok: false, response: errorResponse(400, "VALIDATION_ERROR", "Request body is too large.") };
-  }
+  if (!request.body) return { ok: false, response: errorResponse(400, "VALIDATION_ERROR", "Request body is not valid JSON.") };
+  const reader = request.body.getReader();
+  const timeout = new AbortController();
+  const signal = AbortSignal.any([request.signal, timeout.signal]);
+  const timer = setTimeout(() => timeout.abort(), BODY_TIMEOUT_MS);
+  const cancel = () => { void reader.cancel().catch(() => undefined); };
+  signal.addEventListener("abort", cancel, { once: true });
   try {
+    let bytes = 0;
+    let text = "";
+    const decoder = new TextDecoder("utf-8", { fatal: true });
+    while (true) {
+      signal.throwIfAborted();
+      const chunk = await reader.read();
+      signal.throwIfAborted();
+      if (chunk.done) break;
+      bytes += chunk.value.byteLength;
+      if (bytes > MAX_BODY_BYTES) {
+        void reader.cancel().catch(() => undefined);
+        return { ok: false, response: errorResponse(400, "VALIDATION_ERROR", "Request body is too large.") };
+      }
+      text += decoder.decode(chunk.value, { stream: true });
+    }
+    text += decoder.decode();
     return { ok: true, value: JSON.parse(text) as unknown };
   } catch {
+    void reader.cancel().catch(() => undefined);
     return { ok: false, response: errorResponse(400, "VALIDATION_ERROR", "Request body is not valid JSON.") };
+  } finally {
+    clearTimeout(timer);
+    signal.removeEventListener("abort", cancel);
+    reader.releaseLock();
   }
 }
 

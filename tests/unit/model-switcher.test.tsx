@@ -117,6 +117,24 @@ describe("ModelSwitcher (workspace)", () => {
     await waitFor(() => expect(screen.getByRole("combobox", { name: "AI model" })).toHaveTextContent("Server default model"));
     expect(screen.getByRole("combobox", { name: "AI model" })).toBeDisabled();
     expect(screen.getByTestId("selected")).toHaveTextContent("none");
+    expect(screen.getByText(/Model list unavailable/)).toBeInTheDocument();
+    expect(screen.getByText(/manual entry remains available/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry model list" })).toBeEnabled();
+  });
+
+  it("retries a failed model list without reloading and restores an allowlisted preference", async () => {
+    window.localStorage.setItem("intentshield:ai-model", "b/two");
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response("temporary error", { status: 503 }))
+      .mockResolvedValueOnce(Response.json(MODELS));
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(await screen.findByRole("button", { name: "Retry model list" }));
+    await waitFor(() => expect(screen.getByTestId("selected")).toHaveTextContent("b/two"));
+    expect(screen.getByRole("combobox", { name: "AI model" })).toBeEnabled();
+    expect(screen.queryByText(/Model list unavailable/)).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("is disabled while the draft is locked", async () => {

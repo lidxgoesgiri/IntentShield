@@ -20,9 +20,15 @@
   --color-warning: #f1bf77;
   --color-danger: #f28e91;
   --color-mint-deep: #2fa98a; /* mint pressed state on dark text buttons */
+  --color-control: #68877c; /* essential input boundaries, distinct from decorative hairlines */
 
   --radius-control: 10px;
   --radius-panel: 18px;
+  --shadow-panel: 0 18px 56px -36px rgb(0 0 0 / 0.7), inset 0 1px 0 rgb(243 247 245 / 0.025);
+  --shadow-overlay: 0 28px 70px -24px rgb(0 0 0 / 0.85);
+  --duration-fast: 150ms;
+  --duration-medium: 240ms;
+  --duration-reveal: 600ms;
 
   /* Display = poster headlines (single Black weight); heading = smaller titles. */
   --font-display: var(--font-basement), "Arial Black", ui-sans-serif, system-ui, sans-serif;
@@ -48,6 +54,8 @@
   --page-gutter: clamp(16px, 4vw, 72px);
   --content-width: 1320px;
   --header-height: 72px;
+  --section-space: clamp(48px, 7vw, 104px);
+  --panel-space: clamp(20px, 2.4vw, 28px);
 
   color-scheme: dark;
 }

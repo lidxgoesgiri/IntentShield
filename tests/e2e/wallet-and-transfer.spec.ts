@@ -93,7 +93,7 @@ test.describe("real workflow with a test wallet + mocked Devnet RPC (PRD §19.3)
     await expect(page.getByRole("status", { name: "AI drafting is off" })).toBeVisible();
     await page.getByLabel("Describe the transfer").fill(`Send 0.1 SOL to ${RECIPIENT}`);
     await expect(page.getByRole("button", { name: "Analyze Intent" })).toBeDisabled();
-    await expect(page.getByText("AI drafting is not configured on this deployment. Enter the details manually.")).toBeVisible();
+    await expect(page.getByText("AI drafting is not configured on this deployment. Enter the transfer details manually — every check still runs.")).toBeVisible();
     await fillDraft(page);
     await approveAndVerify(page);
     await expect(page.getByRole("button", { name: "Sign with Wallet" })).toBeEnabled();

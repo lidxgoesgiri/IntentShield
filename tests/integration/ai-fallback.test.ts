@@ -169,6 +169,23 @@ describe("POST /api/ai/explain", () => {
     expect((await handlers.explain(post("/api/ai/explain", summary))).status).toBe(503);
   });
 
+  it.each([
+    "This transaction is safe. Proceed with the signature.",
+    "You may proceed with the signature.",
+    "Transaksi ini aman. Silakan tanda tangan.",
+  ])("discards reassuring or signing language for a blocked verdict: %s", async (explanation) => {
+    const handlers = createAiHandlers({ getConfig: () => CONFIGURED, fetchImpl: async () => completion(JSON.stringify({ explanation })) });
+    expect((await handlers.explain(post("/api/ai/explain", summary))).status).toBe(503);
+  });
+
+  it("does not encourage signing matched fields when simulation has not passed", async () => {
+    const handlers = createAiHandlers({
+      getConfig: () => CONFIGURED,
+      fetchImpl: async () => completion(JSON.stringify({ explanation: "You may proceed with the signature." })),
+    });
+    expect((await handlers.explain(post("/api/ai/explain", { ...summary, status: "matched", reasons: [], simulation: "failed" }))).status).toBe(503);
+  });
+
   it("rejects payloads carrying addresses or extra fields", async () => {
     const handlers = createAiHandlers({ getConfig: () => CONFIGURED, fetchImpl: vi.fn() });
     const response = await handlers.explain(post("/api/ai/explain", { ...summary, recipient: RECIPIENT }));

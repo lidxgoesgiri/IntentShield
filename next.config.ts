@@ -23,6 +23,8 @@ const contentSecurityPolicy = [
   // Next.js App Router hydration uses inline scripts; nonce-based CSP would force
   // every route to render dynamically. Trade-off documented in docs/ARCHITECTURE.md.
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  // React delegates events; inline HTML on* handlers are never required.
+  "script-src-attr 'none'",
   "style-src 'self' 'unsafe-inline'",
   // Wallet Standard icons are data: URIs.
   "img-src 'self' data: blob:",
@@ -30,6 +32,7 @@ const contentSecurityPolicy = [
   `connect-src 'self' ${rpcConnectSources().join(" ")}${isDev ? " ws://localhost:* ws://127.0.0.1:*" : ""}`,
   "worker-src 'self' blob:",
   "object-src 'none'",
+  "frame-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'none'",

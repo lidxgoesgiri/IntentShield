@@ -25,6 +25,7 @@ export type TransferEvent =
   | { type: "MANUAL_ENTRY" }
   | { type: "DRAFT_EDITED"; field: "amountSol" | "recipient"; value: string }
   | { type: "WALLET_CHANGED"; address: string | null }
+  | { type: "CHECKS_INVALIDATED"; message: string }
   | { type: "INTENT_APPROVED"; intent: ApprovedIntent }
   | { type: "BUILD_SUCCEEDED"; approvalId: string; prepared: PreparedTransfer; context: VerificationContext }
   | { type: "VERIFICATION_COMPLETED"; approvalId: string; result: VerificationResult }
@@ -34,8 +35,10 @@ export type TransferEvent =
   | { type: "SIGN_REQUESTED"; approvalId: string }
   | { type: "SIGN_FAILED"; approvalId: string; code: string; message: string }
   | { type: "SIGNED"; approvalId: string; signed: SignedTransfer }
+  | { type: "BROADCAST_STARTED"; approvalId: string; submittedAt: number }
   | { type: "SUBMIT_RESOLVED"; approvalId: string; outcome: SubmitOutcome; submittedAt: number }
   | { type: "CONFIRMATION_UPDATED"; approvalId: string; interpretation: StatusInterpretation; details?: Partial<Pick<TransactionReceipt, "blockTime" | "feeLamports">> }
+  | { type: "RECEIPT_DETAILS_LOADED"; signature: string; blockTime: bigint | null; feeLamports: bigint | null }
   | { type: "LIFETIME_EXPIRED"; approvalId: string }
   | { type: "REVIEW_AGAIN" }
   | { type: "RESET" };
@@ -165,7 +168,8 @@ function receiptFrom(
     slot: null,
     error,
     blockTime: null,
-    feeLamports: state.simulation?.feeLamports ?? null,
+    estimatedFeeLamports: state.simulation?.feeLamports ?? null,
+    feeLamports: null,
   };
 }
 
@@ -182,7 +186,14 @@ export function transferReducer(state: MachineState, event: TransferEvent): Mach
   switch (event.type) {
     case "COMPOSER_CHANGED": {
       if (!isDraftEditable(state.status)) return state;
-      return { ...state, composerText: event.text };
+      if (state.composerText === event.text) return state;
+      return invalidate(state, {
+        composerText: event.text,
+        draft: EMPTY_DRAFT,
+        aiNotice: null,
+        parseRequestId: null,
+        notice: state.approvedIntent ? "Your request changed. The previous draft, approval and checks were discarded." : null,
+      });
     }
 
     case "PARSE_STARTED": {
@@ -190,6 +201,7 @@ export function transferReducer(state: MachineState, event: TransferEvent): Mach
       return invalidate(state, {
         status: "PARSING_INTENT",
         parseRequestId: event.requestId,
+        draft: EMPTY_DRAFT,
         aiNotice: null,
         notice: null,
       });
@@ -199,8 +211,8 @@ export function transferReducer(state: MachineState, event: TransferEvent): Mach
       if (state.status !== "PARSING_INTENT" || state.parseRequestId !== event.requestId) return state;
       const { response } = event;
       const draft: DraftState = {
-        amountSol: response.draft.amountSol ?? state.draft.amountSol,
-        recipient: response.draft.recipient ?? state.draft.recipient,
+        amountSol: response.draft.amountSol ?? "",
+        recipient: response.draft.recipient ?? "",
         source: "ai",
       };
       const model = response.meta ? { model: response.meta } : {};
@@ -231,10 +243,15 @@ export function transferReducer(state: MachineState, event: TransferEvent): Mach
       const next = {
         ...state,
         parseRequestId: null,
-        draft: response.status === "unsupported" ? state.draft : draft,
+        draft: response.status === "unsupported" ? EMPTY_DRAFT : draft,
         aiNotice,
       };
-      return { ...next, status: draftStatus(next.draft, next.walletAddress, aiNotice) };
+      return {
+        ...next,
+        // An incomplete/unsupported parse is never an approval-ready result,
+        // even if an inconsistent response happens to contain valid fields.
+        status: response.status === "complete" ? draftStatus(next.draft, next.walletAddress, aiNotice) : "NEEDS_INPUT",
+      };
     }
 
     case "PARSE_FAILED": {
@@ -281,6 +298,11 @@ export function transferReducer(state: MachineState, event: TransferEvent): Mach
             : null,
         },
       );
+    }
+
+    case "CHECKS_INVALIDATED": {
+      if (isPostSubmit(state.status)) return state;
+      return invalidate(state, { notice: event.message });
     }
 
     case "INTENT_APPROVED": {
@@ -399,8 +421,18 @@ export function transferReducer(state: MachineState, event: TransferEvent): Mach
       return { ...state, signed: event.signed };
     }
 
-    case "SUBMIT_RESOLVED": {
+    case "BROADCAST_STARTED": {
       if (stale(state, event.approvalId) || state.status !== "AWAITING_WALLET" || !state.signed) return state;
+      return {
+        ...state,
+        status: "CONFIRMING",
+        receipt: receiptFrom(state, state.signed.signature, "confirming", event.submittedAt, null),
+        notice: "Sending the signed transaction. Its signature will remain available if the connection changes.",
+      };
+    }
+
+    case "SUBMIT_RESOLVED": {
+      if (stale(state, event.approvalId) || !["AWAITING_WALLET", "CONFIRMING"].includes(state.status) || !state.signed) return state;
       const { outcome } = event;
       switch (outcome.kind) {
         case "submitted":
@@ -417,9 +449,9 @@ export function transferReducer(state: MachineState, event: TransferEvent): Mach
             notice: outcome.message,
           };
         case "expired":
-          return { ...state, status: "SUBMIT_FAILED", error: { code: "EXPIRED_BEFORE_BROADCAST", message: outcome.message } };
+          return { ...state, status: "SUBMIT_FAILED", receipt: null, error: { code: "EXPIRED_BEFORE_BROADCAST", message: outcome.message } };
         case "rejected":
-          return { ...state, status: "SUBMIT_FAILED", error: { code: outcome.code, message: outcome.message } };
+          return { ...state, status: "SUBMIT_FAILED", receipt: null, error: { code: outcome.code, message: outcome.message } };
       }
       return state;
     }
@@ -440,8 +472,13 @@ export function transferReducer(state: MachineState, event: TransferEvent): Mach
       return { ...state, receipt, status: RECEIPT_TO_STATUS[interpretation.status] };
     }
 
+    case "RECEIPT_DETAILS_LOADED": {
+      if (!state.receipt || state.receipt.signature !== event.signature) return state;
+      return { ...state, receipt: { ...state.receipt, blockTime: event.blockTime, feeLamports: event.feeLamports } };
+    }
+
     case "LIFETIME_EXPIRED": {
-      if (stale(state, event.approvalId) || state.status !== "READY_TO_SIGN") return state;
+      if (stale(state, event.approvalId) || !["READY_TO_SIGN", "AWAITING_WALLET"].includes(state.status) || state.signed) return state;
       return invalidate(state, {
         notice: "The prepared transaction expired before signing. Review and approve again to build a fresh one.",
       });

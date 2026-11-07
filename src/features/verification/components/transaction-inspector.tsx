@@ -32,10 +32,10 @@ export function TransactionInspector({ result, messageBytes }: { result: Verific
         <div role="table" aria-label="Approved intent compared with the decoded transaction" className="overflow-hidden rounded-[var(--radius-control)] border border-hairline bg-obsidian/40">
           <div role="rowgroup" className="hidden border-b border-hairline bg-raised/40 px-4 py-2.5 md:block">
             <div role="row" className="grid grid-cols-[7.5rem_1fr_1fr_7.5rem] gap-x-4">
-              <span role="columnheader" className="type-eyebrow text-[0.7rem]">Field</span>
-              <span role="columnheader" className="type-eyebrow text-[0.7rem]">You intended</span>
-              <span role="columnheader" className="type-eyebrow text-[0.7rem]">Transaction will execute</span>
-              <span role="columnheader" className="type-eyebrow text-[0.7rem]">State</span>
+              <span role="columnheader" className="type-eyebrow text-[0.8125rem]">Field</span>
+              <span role="columnheader" className="type-eyebrow text-[0.8125rem]">You intended</span>
+              <span role="columnheader" className="type-eyebrow text-[0.8125rem]">Transaction will execute</span>
+              <span role="columnheader" className="type-eyebrow text-[0.8125rem]">State</span>
             </div>
           </div>
           <div role="rowgroup">

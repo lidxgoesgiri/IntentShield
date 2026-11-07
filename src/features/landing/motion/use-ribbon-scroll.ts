@@ -10,8 +10,8 @@ function ribbonStrokes(root: HTMLElement, name: string): Element[] {
  * Scroll-linked ribbon for S04 and the S08 underline. Pure presentation: it
  * only animates stroke-dashoffset, opacity/transform of the step blocks and a
  * data-active attribute on decorative SVG nodes — never content, state, or
- * signing. On desktop the S04 stage is pinned: the ribbon draws across the
- * three stages and each stage comes into focus as the ribbon reaches it.
+ * signing. The ribbon follows natural scrolling without pin spacers, and
+ * each stage comes into focus as the ribbon reaches it.
  */
 export function setupRibbonMotion(gsap: Gsap, root: HTMLElement, desktop: boolean): () => void {
   const howSection = root.querySelector<HTMLElement>("[data-how-section]");
@@ -32,11 +32,9 @@ export function setupRibbonMotion(gsap: Gsap, root: HTMLElement, desktop: boolea
         defaults: { ease: "none" },
         scrollTrigger: {
           trigger: stage,
-          start: "center 55%",
-          end: "+=120%",
-          pin: true,
+          start: "top 82%",
+          end: "bottom 38%",
           scrub: 0.6,
-          anticipatePin: 1,
           onUpdate: (self) => markProgress(self.progress),
         },
       });

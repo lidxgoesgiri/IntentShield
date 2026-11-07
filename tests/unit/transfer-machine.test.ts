@@ -314,6 +314,22 @@ describe("transfer state machine (PRD §7)", () => {
     expect(fresh.approvedIntent).toBeNull();
   });
 
+  it("an inconsistent needs_input response cannot make valid fields approvable until a manual edit", () => {
+    const started = transferReducer(createInitialState(SENDER), { type: "PARSE_STARTED", requestId: "incomplete" });
+    const incomplete = transferReducer(started, {
+      type: "PARSE_SUCCEEDED",
+      requestId: "incomplete",
+      response: { status: "needs_input", draft: { action: "transfer_native_sol", amountSol: "0.1", recipient: RECIPIENT }, missingFields: ["recipient"], explanation: "Review the request." },
+    });
+    expect(incomplete.status).toBe("NEEDS_INPUT");
+    const candidate = approveIntent(incomplete.draft, SENDER);
+    if (!candidate.ok) throw new Error("expected syntactically valid draft");
+    expect(transferReducer(incomplete, { type: "INTENT_APPROVED", intent: candidate.intent })).toBe(incomplete);
+    const edited = transferReducer(incomplete, { type: "DRAFT_EDITED", field: "amountSol", value: "0.2" });
+    expect(edited.status).toBe("DRAFT_READY");
+    expect(edited.draft.source).toBe("manual");
+  });
+
   it("AI model attribution is display-only: it changes neither the draft rules nor approval", () => {
     const response = {
       status: "complete" as const,
@@ -346,5 +362,53 @@ describe("transfer state machine (PRD §7)", () => {
     });
     expect(failed.status).toBe("AI_UNAVAILABLE");
     expect(failed.aiNotice?.message).toContain("manually");
+  });
+
+  it("a new request clears an approved draft and null AI fields never reuse an old recipient", () => {
+    const { state } = readyToSign();
+    const changed = transferReducer(state, { type: "COMPOSER_CHANGED", text: "Send 0.2 SOL to Budi" });
+    expect(changed.approvedIntent).toBeNull();
+    expect(changed.verification).toBeNull();
+    expect(changed.draft).toMatchObject({ amountSol: "", recipient: "" });
+    const started = transferReducer(changed, { type: "PARSE_STARTED", requestId: "new-request" });
+    const partial = transferReducer(started, {
+      type: "PARSE_SUCCEEDED", requestId: "new-request",
+      response: { status: "needs_input", draft: { action: "transfer_native_sol", amountSol: "0.2", recipient: null }, missingFields: ["recipient"], explanation: "Full address needed." },
+    });
+    expect(partial.status).toBe("NEEDS_INPUT");
+    expect(partial.draft.recipient).toBe("");
+    expect(canRequestSignature(partial)).toBe(false);
+  });
+
+  it("an unsupported AI request cannot leave a previous valid transfer approvable", () => {
+    const started = transferReducer(draftReady(), { type: "PARSE_STARTED", requestId: "unsupported" });
+    const unsupported = transferReducer(started, {
+      type: "PARSE_SUCCEEDED", requestId: "unsupported",
+      response: { status: "unsupported", draft: { action: null, amountSol: null, recipient: null }, missingFields: [], explanation: "Tokens are unsupported." },
+    });
+    expect(unsupported.status).toBe("NEEDS_INPUT");
+    expect(unsupported.draft.amountSol).toBe("");
+    expect(unsupported.draft.recipient).toBe("");
+  });
+
+  it("wallet changes during a broadcast preserve its known signature and terminal details load later", () => {
+    const { state, intent } = readyToSign();
+    const broadcasting = reduce(state,
+      { type: "SIGN_REQUESTED", approvalId: intent.approvalId },
+      { type: "SIGNED", approvalId: intent.approvalId, signed: { signature: "sig", wireBase64: "AA==", signedMessageFingerprint: "sha256:x", signedAt: 2 } },
+      { type: "BROADCAST_STARTED", approvalId: intent.approvalId, submittedAt: 3 },
+      { type: "WALLET_CHANGED", address: OTHER },
+    );
+    expect(broadcasting.receipt?.signature).toBe("sig");
+    expect(broadcasting.receipt?.feeLamports).toBeNull();
+    expect(broadcasting.receipt?.estimatedFeeLamports).toBe(5000n);
+    const confirmed = transferReducer(broadcasting, {
+      type: "CONFIRMATION_UPDATED", approvalId: intent.approvalId,
+      interpretation: { status: "confirmed", confirmationStatus: "confirmed", slot: 12n, error: null },
+    });
+    const enriched = transferReducer(confirmed, { type: "RECEIPT_DETAILS_LOADED", signature: "sig", blockTime: 100n, feeLamports: 5001n });
+    expect(enriched.status).toBe("CONFIRMED");
+    expect(enriched.receipt).toMatchObject({ blockTime: 100n, feeLamports: 5001n, estimatedFeeLamports: 5000n });
+    expect(transferReducer(enriched, { type: "RECEIPT_DETAILS_LOADED", signature: "another", blockTime: 1n, feeLamports: 1n })).toBe(enriched);
   });
 });

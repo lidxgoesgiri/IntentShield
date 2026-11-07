@@ -52,7 +52,7 @@ export function SimulatorStatus({ result }: { result: DemoResult }) {
     >
       <span className="mt-0.5">{view.icon}</span>
       <div className="min-w-0 space-y-0.5">
-        <p className="font-mono text-[0.75rem] font-medium uppercase tracking-[0.1em]">{view.label}</p>
+        <p className="font-mono text-[0.8125rem] font-medium uppercase tracking-[0.1em]">{view.label}</p>
         <p className="text-[0.95rem] text-white">{message}</p>
         {result.status === "unavailable" && result.detail ? <p className="text-[0.875rem] text-silver">{result.detail}</p> : null}
       </div>

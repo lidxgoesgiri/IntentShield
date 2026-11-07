@@ -10,16 +10,17 @@ export const metadata: Metadata = {
 
 export default async function TransactionPage({ params }: PageProps<"/tx/[signature]">) {
   const { signature } = await params;
-  const decoded = decodeURIComponent(signature);
+  // App Router already decodes route parameters. Malformed percent input must 404, not throw.
+  const decoded = signature;
   if (!isSignature(decoded)) notFound();
 
   return (
     <main id="main" className="page-container max-w-3xl space-y-8 py-10 sm:py-14">
-      <header className="space-y-3">
+      <header className="page-intro">
         <p className="type-eyebrow">
           <span className="text-mint">Solana Devnet</span> · status read from RPC
         </p>
-        <h1 className="font-display text-[clamp(1.9rem,4vw,3rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-white">
+        <h1 className="page-title">
           Transaction receipt
         </h1>
         <p className="font-data text-[0.9rem] text-silver">{decoded}</p>

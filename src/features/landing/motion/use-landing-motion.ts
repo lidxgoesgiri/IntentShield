@@ -11,10 +11,12 @@ import { setupRibbonMotion } from "./use-ribbon-scroll";
  * root, and reverted on unmount. With reduced motion nothing is created: the
  * static, complete presentation (all text visible, ribbons fully drawn) stays.
  */
-export function useLandingMotion(rootRef: RefObject<HTMLElement | null>) {
+export function useLandingMotion(rootRef: RefObject<HTMLElement | null>, enabled: boolean) {
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
+    // Reduced motion and user pause keep SSR content complete and load no optional GSAP code.
+    if (!enabled) return;
     let cancelled = false;
     let revert: (() => void) | null = null;
 
@@ -114,5 +116,5 @@ export function useLandingMotion(rootRef: RefObject<HTMLElement | null>) {
       stopWatching();
       revert?.();
     };
-  }, [rootRef]);
+  }, [rootRef, enabled]);
 }

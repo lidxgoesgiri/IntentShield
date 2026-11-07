@@ -47,7 +47,7 @@ export function IntentComposer({
         hint="Example: Send 0.1 SOL to <full recipient address>. Names are never resolved — paste the full address."
         error={tooLong ? `Keep the request under ${MAX_INTENT_TEXT_LENGTH} characters.` : null}
         aside={
-          <span className={tooLong ? "font-mono text-[0.8rem] text-danger" : "type-caption font-mono"} aria-live="polite">
+          <span className={tooLong ? "font-mono text-[0.8125rem] text-danger" : "type-caption font-mono"} aria-live="polite">
             {length}/{MAX_INTENT_TEXT_LENGTH}
           </span>
         }
@@ -85,7 +85,7 @@ export function IntentComposer({
           <PenLine className="size-4" aria-hidden /> Enter Manually
         </Button>
       </div>
-      {aiDisabledReason ? <p className="type-caption">{aiDisabledReason}</p> : null}
+      {aiDisabledReason && ai.status !== "off" ? <p className="type-caption">{aiDisabledReason}</p> : null}
 
       {notice ? (
         <Alert
@@ -95,7 +95,7 @@ export function IntentComposer({
         >
           {notice.explanation ? (
             <p>
-              <span className="type-eyebrow mr-2 text-[0.7rem]">AI note · untrusted</span>
+              <span className="type-eyebrow mr-2 text-[0.8125rem]">AI note · untrusted</span>
               {notice.explanation}
             </p>
           ) : null}

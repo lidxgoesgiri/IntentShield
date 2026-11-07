@@ -18,7 +18,7 @@ export function LandingFooter() {
           </p>
         </div>
         <nav aria-label="Footer" className="lg:col-span-3">
-          <p className="type-eyebrow mb-3 text-[0.72rem]">Sections</p>
+          <p className="type-eyebrow mb-3 text-[0.8125rem]">Sections</p>
           <ul className="grid grid-cols-2 gap-x-6 lg:grid-cols-1">
             {LANDING_SECTIONS.map((section) => (
               <li key={section.id}>
@@ -30,7 +30,7 @@ export function LandingFooter() {
           </ul>
         </nav>
         <div className="space-y-3 lg:col-span-5">
-          <p className="type-eyebrow text-[0.72rem]">Product</p>
+          <p className="type-eyebrow text-[0.8125rem]">Product</p>
           <ul className="space-y-1">
             <li>
               <Link href="/app" className="inline-flex min-h-10 items-center text-[0.9rem] text-silver hover:text-white">
@@ -57,7 +57,7 @@ export function LandingFooter() {
         </div>
       </div>
       <div className="border-t border-hairline">
-        <div className="page-container flex flex-col gap-2 py-6 text-[0.8rem] text-muted sm:flex-row sm:justify-between">
+        <div className="page-container flex flex-col gap-2 py-6 text-[0.8125rem] text-muted sm:flex-row sm:justify-between">
           <p>© 2026 IntentShield. Built for the Solana Hackathon 2026 (MLH).</p>
           <p>Not affiliated with Solana Foundation, MLH, or any wallet provider.</p>
         </div>

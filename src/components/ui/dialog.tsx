@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /** Modal dialog — only for flows that must hold focus (e.g. wallet selection). */
@@ -21,13 +21,20 @@ export function Dialog({
   children: ReactNode;
   className?: string;
 }) {
+  const opener = useRef<HTMLElement | null>(null);
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-obsidian/80 backdrop-blur-[2px]" />
         <DialogPrimitive.Content
+          onOpenAutoFocus={() => { opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null; }}
+          onCloseAutoFocus={(event) => {
+            // These controlled dialogs do not require a Radix Trigger wrapper.
+            // Restore the actual opener when it still exists (Escape, close, overlay).
+            if (opener.current?.isConnected) { event.preventDefault(); opener.current.focus(); }
+          }}
           className={cn(
-            "fixed left-1/2 top-1/2 z-50 w-[min(92vw,460px)] -translate-x-1/2 -translate-y-1/2 hairline-panel p-6 shadow-[0_30px_80px_-20px_rgb(0_0_0/0.8)] fade-up",
+            "fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-32px)] w-[min(92vw,460px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto hairline-panel panel-space shadow-[var(--shadow-overlay)] fade-up",
             className,
           )}
         >

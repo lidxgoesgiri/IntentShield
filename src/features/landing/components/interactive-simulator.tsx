@@ -224,7 +224,7 @@ export function InteractiveSimulator({ checkOptions }: { checkOptions?: DemoChec
                     return (
                       <li key={code}>
                         <span className="font-medium text-white">{reason.title}.</span> {reason.detail}{" "}
-                        <code className="font-mono text-[0.75rem] text-muted">{code}</code>
+                        <code className="font-mono text-[0.8125rem] text-muted">{code}</code>
                       </li>
                     );
                   })}
@@ -259,7 +259,7 @@ export function InteractiveSimulator({ checkOptions }: { checkOptions?: DemoChec
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-3 rounded-[var(--radius-control)] border border-hairline bg-obsidian/45 p-4">
-      <h3 className="type-eyebrow text-[0.72rem]">{title}</h3>
+      <h3 className="type-eyebrow text-[0.8125rem]">{title}</h3>
       {children}
     </section>
   );

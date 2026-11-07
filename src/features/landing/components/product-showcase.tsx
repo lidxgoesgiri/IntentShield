@@ -18,7 +18,7 @@ export function ProductShowcase() {
 
   return (
     <section id="product" data-atmosphere="0.28" aria-labelledby="product-title" className="border-t border-hairline">
-      <div className="page-container py-[clamp(64px,11vw,168px)]">
+      <div className="page-container section-space">
         <SectionHeader index="05" eyebrow="Product" title={PRODUCT_COPY.title} titleId="product-title" lead={PRODUCT_COPY.lead} split="scrub">
           <Button asChild>
             <Link href="/app">
@@ -27,8 +27,8 @@ export function ProductShowcase() {
           </Button>
         </SectionHeader>
 
-        <figure className="mt-14 lg:mt-20">
-          <div className="product-frame overflow-hidden rounded-[22px] border border-hairline bg-carbon shadow-[0_40px_120px_-60px_rgb(100_232_199/0.25)]" data-product-frame="">
+        <figure className="mt-8 lg:mt-12">
+          <div className="product-frame overflow-hidden rounded-[var(--radius-panel)] border border-hairline bg-carbon shadow-[var(--shadow-panel)]" data-product-frame="">
             <div className="flex items-center gap-3 border-b border-hairline bg-obsidian/70 px-4 py-3 sm:px-6">
               <BrandMark className="size-6" />
               <span className="font-heading text-[0.95rem] font-medium text-white">IntentShield</span>
@@ -43,9 +43,7 @@ export function ProductShowcase() {
             />
           </div>
           <figcaption className="type-caption mt-4 max-w-3xl">
-            Live preview: these are the production components, rendered with SHA-256-derived sample addresses. The verdicts are
-            computed by the real verifier from controlled, unsigned sample messages — no wallet balances, hashes, or audit stamps
-            are invented.
+            Production components, controlled unsigned samples, real verifier. No wallet balances or network results are fabricated.
           </figcaption>
         </figure>
       </div>
