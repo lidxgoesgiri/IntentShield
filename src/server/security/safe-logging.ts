@@ -2,7 +2,7 @@ import "server-only";
 
 type SafeField = string | number | boolean | null;
 
-const ALLOWED_FIELDS = new Set(["route", "code", "status", "attempt", "durationMs", "kind"]);
+const ALLOWED_FIELDS = new Set(["route", "code", "status", "attempt", "durationMs", "kind", "model"]);
 
 /**
  * Log policy (PRD §17): never log natural-language input, wallet addresses,

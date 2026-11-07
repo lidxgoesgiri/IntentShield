@@ -8,7 +8,8 @@ import { RECIPIENT } from "@/test/fixtures/solana";
 const CONFIGURED: AiConfig = {
   configured: true,
   apiKey: "test-key-not-real",
-  model: "test/model",
+  models: ["test/model"],
+  defaultModel: "test/model",
   baseUrl: "https://ai.example.test/v1",
   requestsPerMinute: 3,
   dailyBudget: 100,
@@ -48,6 +49,7 @@ describe("POST /api/ai/parse-intent — server behaviour", () => {
       draft: { action: "transfer_native_sol", amountSol: "0.1", recipient: RECIPIENT },
       missingFields: [],
       explanation: "I identified a native SOL transfer.",
+      meta: { model: "test/model", requestedModel: "test/model", fallbackUsed: false },
     });
     // The key is only ever sent to the provider, server side.
     const init = fetchImpl.mock.calls[0]?.[1] as RequestInit | undefined;

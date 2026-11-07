@@ -31,6 +31,13 @@ export type ApprovedIntent = Readonly<{
 
 export type ParseIntentStatus = "complete" | "needs_input" | "unsupported";
 
+/** Which allowlisted AI model answered. Display only — never a trust signal. */
+export type AiCallMeta = Readonly<{
+  model: string;
+  requestedModel: string;
+  fallbackUsed: boolean;
+}>;
+
 /** Structured AI output contract (PRD §9.3). Untrusted until validated. */
 export type ParseIntentResponse = {
   status: ParseIntentStatus;
@@ -41,4 +48,5 @@ export type ParseIntentResponse = {
   };
   missingFields: Array<"amountSol" | "recipient">;
   explanation: string;
+  meta?: AiCallMeta;
 };

@@ -1,6 +1,9 @@
 import { z } from "zod";
 import { MAX_INTENT_TEXT_LENGTH } from "@/config/product";
 
+/** Model id chosen in the browser; the server re-validates it against its allowlist. */
+export const ModelIdSchema = z.string().trim().min(1).max(160);
+
 /** POST /api/ai/parse-intent request body. */
 export const ParseIntentRequestSchema = z.object({
   text: z
@@ -8,7 +11,30 @@ export const ParseIntentRequestSchema = z.object({
     .trim()
     .min(1, "Describe the transfer you want to make.")
     .max(MAX_INTENT_TEXT_LENGTH, `Keep the request under ${MAX_INTENT_TEXT_LENGTH} characters.`),
+  model: ModelIdSchema.optional(),
 });
+
+/** Which allowlisted model actually answered (display only). */
+export const AiCallMetaSchema = z
+  .object({
+    model: ModelIdSchema,
+    requestedModel: ModelIdSchema,
+    fallbackUsed: z.boolean(),
+  })
+  .strict();
+
+/** GET /api/ai/models — public model ids and labels only, never keys. */
+export const AiModelsResponseSchema = z
+  .object({
+    available: z.boolean(),
+    defaultModel: ModelIdSchema.nullable(),
+    models: z
+      .array(z.object({ id: ModelIdSchema, label: z.string().min(1).max(160), isDefault: z.boolean() }).strict())
+      .max(24),
+  })
+  .strict();
+
+export type AiModelsResponse = z.infer<typeof AiModelsResponseSchema>;
 
 const MissingFieldSchema = z.enum(["amountSol", "recipient"]);
 
@@ -25,6 +51,7 @@ export const ParseIntentResponseSchema = z
       .strict(),
     missingFields: z.array(MissingFieldSchema).max(2),
     explanation: z.string().max(400),
+    meta: AiCallMetaSchema.optional(),
   })
   .strict();
 
@@ -75,12 +102,18 @@ export const ExplainRequestSchema = z
       .string()
       .regex(/^[A-Z0-9_]{1,48}$/)
       .nullable(),
+    model: ModelIdSchema.optional(),
   })
   .strict();
 
 export type ExplainRequest = z.infer<typeof ExplainRequestSchema>;
 
-export const ExplainResponseSchema = z.object({ explanation: z.string().min(1).max(700) }).strict();
+export const ExplainResponseSchema = z
+  .object({ explanation: z.string().min(1).max(700), meta: AiCallMetaSchema.optional() })
+  .strict();
+
+/** Raw model output for explanations (extra keys are ignored, not trusted). */
+export const RawModelExplanationSchema = z.object({ explanation: z.string().min(1).max(2000) });
 
 export const ApiErrorSchema = z.object({
   error: z.object({ code: z.string(), message: z.string() }),
