@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { MAINNET_GENESIS, mockDevnetRpc, type MockRpcOptions } from "./support/mock-rpc";
+import { mockAiModels } from "./support/mock-ai";
 import { installTestWallet, testWalletSignCalls, type TestWalletMode } from "./support/test-wallet";
 
 const RECIPIENT = "FsNiTa4NXvM7mNyiqeGw7FaYgub6g6VHmxzkSo4i5eXL";
@@ -88,15 +89,32 @@ test.describe("real workflow with a test wallet + mocked Devnet RPC (PRD §19.3)
   test("E2E #5: AI unavailable → manual entry still completes verification", async ({ page }) => {
     await openApp(page);
     await connect(page);
+    // This E2E server has no AI key: the workspace says so up front instead of failing later.
+    await expect(page.getByRole("status", { name: "AI drafting is off" })).toBeVisible();
     await page.getByLabel("Describe the transfer").fill(`Send 0.1 SOL to ${RECIPIENT}`);
-    await page.getByRole("button", { name: "Analyze Intent" }).click();
-    await expect(page.getByText("AI help is offline. Enter the transfer details manually.").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Analyze Intent" })).toBeDisabled();
+    await expect(page.getByText("AI drafting is not configured on this deployment. Enter the details manually.")).toBeVisible();
     await fillDraft(page);
     await approveAndVerify(page);
     await expect(page.getByRole("button", { name: "Sign with Wallet" })).toBeEnabled();
   });
 
+  test("E2E #5b: AI provider failing → offline copy, manual entry still works", async ({ page }) => {
+    await mockAiModels(page);
+    await page.route("**/api/ai/parse-intent", (route) =>
+      route.fulfill({ status: 503, json: { error: { code: "AI_UNAVAILABLE", message: "AI assistance is unavailable. You can still transfer manually." } } }),
+    );
+    await openApp(page);
+    await connect(page);
+    await page.getByLabel("Describe the transfer").fill(`Send 0.1 SOL to ${RECIPIENT}`);
+    await page.getByRole("button", { name: "Analyze Intent" }).click();
+    await expect(page.getByText("AI help is offline. Enter the transfer details manually.").first()).toBeVisible();
+    await fillDraft(page);
+    await approveAndVerify(page);
+  });
+
   test("AI draft is untrusted: invented recipients are discarded, real ones need review", async ({ page }) => {
+    await mockAiModels(page);
     await openApp(page);
     await page.route("**/api/ai/parse-intent", (route) =>
       route.fulfill({
