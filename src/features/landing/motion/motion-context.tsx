@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { MOTION_CONDITIONS } from "./motion-preferences";
 
 function subscribePreference(notify: () => void) {
@@ -9,14 +9,13 @@ function subscribePreference(notify: () => void) {
   return () => media.removeEventListener("change", notify);
 }
 
-type MotionState = { enabled: boolean; paused: boolean; togglePaused: () => void };
-const MotionContext = createContext<MotionState>({ enabled: false, paused: false, togglePaused: () => undefined });
+type MotionState = { enabled: boolean };
+const MotionContext = createContext<MotionState>({ enabled: false });
 
-/** One presentation preference governs every landing engine; transaction state is never involved. */
+/** The reduced-motion preference governs every landing engine; transaction state is never involved. */
 export function MotionProvider({ children }: { children: ReactNode }) {
-  const allowed = useSyncExternalStore(subscribePreference, () => window.matchMedia(MOTION_CONDITIONS.motion).matches, () => false);
-  const [paused, setPaused] = useState(false);
-  const value = useMemo(() => ({ enabled: allowed && !paused, paused, togglePaused: () => setPaused((current) => !current) }), [allowed, paused]);
+  const enabled = useSyncExternalStore(subscribePreference, () => window.matchMedia(MOTION_CONDITIONS.motion).matches, () => false);
+  const value = useMemo(() => ({ enabled }), [enabled]);
   return <MotionContext.Provider value={value}>{children}</MotionContext.Provider>;
 }
 

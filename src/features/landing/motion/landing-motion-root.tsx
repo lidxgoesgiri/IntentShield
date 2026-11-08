@@ -11,10 +11,10 @@ export function LandingMotionRoot({ children }: { children: ReactNode }) {
 
 function MotionSurface({ children }: { children: ReactNode }) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const { enabled, paused } = useDecorativeMotion();
+  const { enabled } = useDecorativeMotion();
   useLandingMotion(rootRef, enabled);
   return (
-    <div ref={rootRef} data-landing-root="" data-motion-paused={paused}>
+    <div ref={rootRef} data-landing-root="">
       {children}
     </div>
   );

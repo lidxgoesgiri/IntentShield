@@ -130,23 +130,17 @@ test.describe("stack interlude — dual-direction motion rail", () => {
     expect(Math.abs(hovered.speeds[1])).toBeGreaterThan(Math.abs(baseline.speeds[1]) * 0.7);
   });
 
-  test("the pause control stops all motion and resumes it (WCAG 2.2.2)", async ({ page }) => {
+  test("the landing has no pause control; motion follows the reduced-motion preference", async ({ page }) => {
     await showRail(page);
-    const toggle = page.getByRole("button", { name: "Pause motion" });
-    await toggle.click();
-    await expect(page.getByRole("button", { name: "Resume motion" })).toHaveAttribute("aria-pressed", "true");
-    await page.waitForTimeout(1800);
-    const paused = await sampleRail(page, 700);
-    expect(Math.abs(paused.speeds[0])).toBeLessThan(2);
-    expect(Math.abs(paused.speeds[1])).toBeLessThan(2);
-    await page.getByRole("button", { name: "Resume motion" }).click();
-    await page.waitForTimeout(1600);
-    const resumed = await sampleRail(page, 700);
-    expect(resumed.speeds[0]).toBeLessThan(-20);
-    expect(resumed.speeds[1]).toBeGreaterThan(20);
+    // Owner decision (8 Nov 2026): no in-page pause control, for a cleaner page.
+    await expect(page.getByRole("button", { name: /pause|resume/i })).toHaveCount(0);
+    await expect(page.locator("#stack [data-rail-head] button")).toHaveCount(0);
+    const moving = await sampleRail(page, 700);
+    expect(moving.speeds[0]).toBeLessThan(-20);
+    expect(moving.speeds[1]).toBeGreaterThan(20);
   });
 
-  test("reduced motion: static rails, every item visible, no duplicates or pause control", async ({ browser }) => {
+  test("reduced motion: static rails, every item visible, no duplicates", async ({ browser }) => {
     const context = await browser.newContext({ reducedMotion: "reduce" });
     const page = await context.newPage();
     await page.goto("/");
@@ -158,7 +152,6 @@ test.describe("stack interlude — dual-direction motion rail", () => {
       await expect(page.locator("#stack .rail-sequence:not([data-rail-copy])").getByText(name, { exact: true })).toBeVisible();
     }
     await expect(page.locator("#stack [data-rail-copy]").first()).toBeHidden();
-    await expect(page.locator("#stack .rail-pause")).toBeHidden();
     await context.close();
   });
 
