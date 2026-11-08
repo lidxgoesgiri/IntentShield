@@ -1,6 +1,5 @@
 "use client";
 
-import { Pause, Play } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { useDecorativeMotion } from "../motion/motion-context";
 import { InfiniteMarqueeTrack, type MarqueeTrackController } from "../rail/infinite-marquee-track";
@@ -11,9 +10,8 @@ import { useMotionRail } from "../rail/use-motion-rail";
 /**
  * Interlude between How It Works and the product (not a numbered chapter):
  * the stack this build runs on, moving right → left, and the checks it
- * performs, moving left → right. Speed follows scroll velocity with damping;
- * a pause control stops all motion (WCAG 2.2.2). Static without JavaScript
- * and with reduced motion.
+ * performs, moving left → right. Speed follows scroll velocity with damping.
+ * Static without JavaScript and with reduced motion.
  */
 export function TechnologyMotionRail() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -21,7 +19,7 @@ export function TechnologyMotionRail() {
   const upperRef = useRef<MarqueeTrackController | null>(null);
   const lowerRef = useRef<MarqueeTrackController | null>(null);
   const pausedRef = useRef(false);
-  const { enabled, paused, togglePaused } = useDecorativeMotion();
+  const { enabled } = useDecorativeMotion();
   const [revision, setRevision] = useState(0);
 
   const sync = useCallback(() => {
@@ -65,18 +63,6 @@ export function TechnologyMotionRail() {
             <span aria-hidden className="hidden h-px w-8 bg-hairline sm:block" />
             <span className="truncate">Stack &amp; capabilities</span>
           </p>
-          <button
-            type="button"
-            onClick={togglePaused}
-            aria-pressed={paused}
-            aria-label={paused ? "Resume motion" : "Pause motion"}
-            className="rail-pause inline-flex shrink-0 whitespace-nowrap min-h-11 items-center gap-2 rounded-[var(--radius-control)] px-2 font-mono text-[0.8125rem] uppercase tracking-[0.14em] text-silver transition-colors hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-mint"
-          >
-            {paused ? <Play className="size-3.5" aria-hidden /> : <Pause className="size-3.5" aria-hidden />}
-            <span>{paused ? "Resume" : "Pause"}</span>
-            {/* The space lives inside the span so the visible label reads "Pause motion" (WCAG 2.5.3). */}
-            <span className="hidden sm:inline">{" motion"}</span>
-          </button>
         </div>
 
         <h2 id="stack-title" className="type-display rail-title mt-[clamp(28px,4vw,56px)]" data-split="flip">
