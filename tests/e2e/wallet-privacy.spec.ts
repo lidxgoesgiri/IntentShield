@@ -2,23 +2,25 @@ import { expect, test } from "@playwright/test";
 import { mockDevnetRpc } from "./support/mock-rpc";
 import { installTestWallet, selectTestWalletAccount, testWalletSignCalls } from "./support/test-wallet";
 
-const OWNER_PROOF = "3f6Kzf4dy9d3q7UXTZTQzN3HUGV1jKLxH83dgXhj7FTaZFXDQd2Vzbox1dXuQKi6tmFhWtfwJfEUTqsWU6atsTzT";
+// Synthetic, valid 64-byte signature (not a real transaction): if the app ever
+// read the legacy ownerless key again, this value would be rendered.
+const LEGACY_SIGNATURE = "DyXZZCSiBREJ8YZ5cULd7PVdKpbkhHvHJ7otbJmLJajJtRsyq1irMMqKimYeKvRmZ8Sc2qWLhKjYR4ekM8RSzkV";
 const RECIPIENT = "FsNiTa4NXvM7mNyiqeGw7FaYgub6g6VHmxzkSo4i5eXL";
 
 test.describe("wallet-scoped privacy and receipt recovery", () => {
-  test("a fresh visitor never receives the owner's proof or a legacy ownerless recovery entry", async ({ page }) => {
+  test("a fresh visitor never receives a transaction proof link or a legacy ownerless recovery entry", async ({ page }) => {
     const rpc = await mockDevnetRpc(page);
-    await page.addInitScript((signature) => { sessionStorage.setItem("intentshield:last-broadcast-signature", signature); }, OWNER_PROOF);
+    await page.addInitScript((signature) => { sessionStorage.setItem("intentshield:last-broadcast-signature", signature); }, LEGACY_SIGNATURE);
     await page.goto("/");
-    await expect(page.locator(`a[href*="${OWNER_PROOF}"]`)).toHaveCount(0);
+    await expect(page.locator(`a[href*="${LEGACY_SIGNATURE}"]`)).toHaveCount(0);
     await expect(page.locator('a[href^="/tx/"]')).toHaveCount(0);
     await expect(page.getByRole("link", { name: /On-chain proof/ })).toHaveCount(0);
-    await expect(page.locator("body")).not.toContainText(OWNER_PROOF);
+    await expect(page.locator("body")).not.toContainText(LEGACY_SIGNATURE);
     await page.goto("/app");
     await expect(page.getByRole("button", { name: "Connect wallet", exact: true })).toBeEnabled();
     await expect(page.getByRole("link", { name: "Recover transaction receipt" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Receipt", exact: true })).toHaveCount(0);
-    await expect(page.locator("body")).not.toContainText(OWNER_PROOF);
+    await expect(page.locator("body")).not.toContainText(LEGACY_SIGNATURE);
     expect(rpc.sentTransactions).toEqual([]);
   });
 

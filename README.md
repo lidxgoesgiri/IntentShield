@@ -128,9 +128,7 @@ The suites include stale drafts, signing cancellation and late wallet responses,
 
 ### Verified historical Devnet transaction
 
-The user supplied [this transaction on Solana Explorer](https://explorer.solana.com/tx/3f6Kzf4dy9d3q7UXTZTQzN3HUGV1jKLxH83dgXhj7FTaZFXDQd2Vzbox1dXuQKi6tmFhWtfwJfEUTqsWU6atsTzT?cluster=devnet). Read-only Devnet RPC checks during remediation found the correct Devnet genesis hash, `finalized` status, `meta.err: null`, a **0.01 SOL** native transfer, and **5,001 lamports (0.000005001 SOL)** actual network fee, at slot **519712179** (7 Nov 2026, 15:56:40 UTC). The local public evidence is `artifacts/evidence/devnet-historical-proof.json`.
-
-The user reported the original Phantom/IntentShield screenshots. Remediation independently checked the historical on-chain transaction with both the current RPC adapter/receipt loader and the browser receipt page using live Devnet RPC; it did **not** connect a real wallet, obtain a new signature, or send a new transaction. Evidence is also recorded in `artifacts/evidence/devnet-receipt-current-adapter.json` and `artifacts/evidence/devnet-receipt-browser.json`. This proof does not establish that every current wallet/browser combination has been exercised.
+A real Devnet transfer that the maintainer reports signing with Phantom was re-checked read-only against live Devnet RPC during remediation: correct Devnet genesis hash, `finalized` status, `meta.err: null`, a **0.01 SOL** native transfer and an actual network fee of **5,001 lamports (0.000005001 SOL)**. The check used both the current RPC adapter/receipt loader and the browser receipt page; it did **not** connect a wallet, obtain a new signature or send a new transaction. The signature is intentionally not published, to protect the maintainer's wallet privacy. This proof does not establish that every current wallet/browser combination has been exercised.
 
 The suites cover the PRD matrices:
 
