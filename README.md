@@ -1,169 +1,499 @@
 <p align="center">
-  <img src="public/brand/intentshield-mark.svg" width="72" height="72" alt="IntentShield mark" />
+  <img src="public/brand/intentshield-mark.svg" width="88" height="88" alt="IntentShield logo" />
 </p>
 
 <h1 align="center">IntentShield</h1>
-<p align="center"><strong>Know what you sign.</strong><br/>Plain-language Solana transfers, verified deterministically against the exact message — before your wallet is asked to sign.</p>
+<p align="center"><strong>The Intelligent Security Layer</strong></p>
+<p align="center">
+  Know what you sign.<br />
+  Describe a SOL transfer. Review the intent. Verify the exact transaction before your wallet signs.
+</p>
 
-<p align="center">Solana Devnet · non-custodial · native SOL transfers only · built for the Solana Hackathon 2026 (MLH)</p>
+<p align="center">
+  <a href="https://intent-shield-self.vercel.app/"><strong>Launch live app ↗</strong></a>
+  &nbsp; · &nbsp;
+  <a href="https://intent-shield-self.vercel.app/app/demo">Explore Security Demo Lab</a>
+  &nbsp; · &nbsp;
+  <a href="SECURITY.md">Security policy</a>
+</p>
+
+<p align="center">Solana Devnet · Native SOL only · Non-custodial · Up to 1 SOL per transfer</p>
+
+> [!IMPORTANT]
+> **AI drafts. Deterministic code verifies. You authorize.** An intent match means the supported transaction matches your approval; it does not establish that the recipient is trustworthy.
 
 ---
 
-## Try it in 60 seconds
+**Quick links:** [Overview](#project-overview) · [How it works](#how-it-works) · [Security](#security-architecture) · [Local setup](#getting-started) · [Test evidence](#testing--verification)
 
-**Live app:** [intent-shield-self.vercel.app](https://intent-shield-self.vercel.app) (Solana Devnet only; nothing here can move real funds).
+<details>
+<summary>Browse the full README</summary>
 
-- **No wallet needed:** open the [Demo Lab](https://intent-shield-self.vercel.app/app/demo), choose *Changed amount* or *Changed recipient*, and watch the same verifier that guards real transfers block the mismatch. The landing page simulator does the same with sample data.
-- **A real Devnet transfer:**
-  1. Use a Wallet Standard wallet that can sign without sending, such as Phantom, and switch it to **Solana Devnet** in its developer or testnet settings.
-  2. Get free Devnet SOL from the [Solana Faucet](https://faucet.solana.com). Devnet SOL has no value.
-  3. Open the [workspace](https://intent-shield-self.vercel.app/app), connect the wallet and describe a transfer, for example `Send 0.01 SOL to <full Devnet address>`. If AI drafting is unavailable, choose **Enter Manually**: verification never depends on AI.
-  4. Review the draft and approve it. IntentShield verifies and simulates the exact message, then asks your wallet to sign. The receipt links to Solana Explorer.
+- [Demo video](#demo-video)
+- [Project overview](#project-overview)
+- [Key features](#key-features)
+- [How it works](#how-it-works)
+- [Security architecture](#security-architecture)
+- [Technology stack](#technology-stack)
+- [Architecture & project structure](#architecture--project-structure)
+- [Getting started](#getting-started)
+- [AI configuration](#ai-configuration)
+- [Solana Devnet setup](#solana-devnet-setup)
+- [Testing & verification](#testing--verification)
+- [Live demo & evidence](#live-demo--evidence)
+- [Limitations & security disclaimer](#limitations--security-disclaimer)
+- [Hackathon information](#hackathon-information)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License & acknowledgments](#license--acknowledgments)
 
-## What it does
+</details>
 
-1. **Describe** a transfer in plain language (`Send 0.1 SOL to <full address>`) — or type the fields manually.
-2. **AI drafts, never decides.** A server-side model proposes an editable draft. Deterministic guards discard any recipient that is not *verbatim* in your text and any amount you did not literally write.
-3. **Approve the exact values.** Approval freezes `{sender, recipient, lamports, devnet}`; editing anything discards it.
-4. **Build → decode → verify the final message.** The app compiles one System Program `Transfer` with a small fixed compute budget, then decodes the *exact bytes* the wallet will sign and compares every field with your approval (program, source, fee payer, recipient, lamports, network, allowed instructions).
-5. **Simulate on Devnet.** Balance + exact fee preflight, then RPC `simulateTransaction` of the same bytes. Any error, timeout, or unreadable answer blocks signing.
-6. **Sign at a verified boundary.** The wallet signs via Wallet Standard `solana:signTransaction`. IntentShield refuses to broadcast unless the wallet returned the **same bytes** with a **valid Ed25519 signature** from your account.
-7. **Broadcast once, confirm honestly.** `SUBMITTED ≠ CONFIRMED`. The receipt only says *Confirmed* after the RPC reports `confirmed`/`finalized` with no error, and links to Solana Explorer (`cluster=devnet`).
+<a id="demo-video"></a>
 
-### AI model switcher
+## 🎬 Demo video
 
-The workspace lets you choose which AI model drafts and explains, from a **server-side allowlist** (`OPENROUTER_MODEL` + `OPENROUTER_MODELS`). The active model is shown next to the composer, the choice is remembered locally but re-validated against the server list, and every answer says which model replied. If the selected model fails (rate limit, timeout, empty or invalid output), the server falls back once to the healthiest alternative — models that just failed cool down for a minute — and the UI labels the fallback. If no model answers, the manual flow takes over. The model choice never reaches the deterministic verifier, simulation, or signing gate (enforced by an import-graph test).
+**[Watch the IntentShield demo on YouTube ↗](https://youtu.be/eTGk3J56Zss)**
 
-The **Demo Lab** (`/app/demo`) and the landing **simulator** run the *same pure verifier* on controlled, unsigned sample transactions (changed amount, lookalike recipient, extra instruction, bytes mutated after review) — labelled *Controlled demo · No funds moved*.
+| Watch for | Product flow |
+|---|---|
+| Describe and review | Natural-language intent, model selection, and editable transfer fields |
+| Verify and simulate | Exact-message checks and a Devnet simulation before signing |
+| Sign and confirm | Explicit Phantom approval, transaction receipt, and Explorer confirmation |
+| Challenge the verifier | Changed amount and lookalike recipient blocked in the Demo Lab |
 
-## What is verified — and what is not
+Alongside the video, [open the Demo Lab](https://intent-shield-self.vercel.app/app/demo) for a wallet-free walkthrough. Its scenarios are controlled examples; they move no funds.
 
-| Verified by the app (deterministic) | Explained by AI (untrusted) | Not verified |
-|---|---|---|
-| Exactly one System Program Transfer, plus the app's fixed compute budget (1,000 CU at 1 micro-lamport; any other value is blocked) | Turning your sentence into a draft | Whether the recipient is trustworthy |
-| Source and fee payer = your wallet | Optional plain-language explanation of a verdict | Reputation / scam history of addresses |
-| Recipient — every character | | Other programs, tokens, protocols |
-| Amount in integer lamports (BigInt) | | Mainnet (disabled) |
-| Devnet, proven by the RPC genesis hash | | Malicious extensions / compromised wallet |
-| Message fingerprint unchanged at sign time; wallet returned the same bytes + valid signature | | What happens after this transaction |
-| RPC simulation of the exact message succeeded | | |
+<a id="project-overview"></a>
 
-UI labels are **Intent Matched / Verification Failed / Unable to Verify** — never "100% safe".
+## 🔎 Project overview
 
-## Architecture
+A wallet's **Sign** button is a high-stakes decision. A recipient address, an instruction list, or a raw transaction can be difficult to connect to what you actually meant to do. Approving without that understanding is **blind signing**.
+
+IntentShield makes one small, useful promise: for a supported native SOL transfer, compare the transaction your wallet will sign with the transfer you explicitly approved.
+
+You describe the transfer or enter it manually. The app turns it into a reviewable draft, builds the transaction, checks its exact message bytes, and simulates it on Solana Devnet. Your wallet is asked to sign only after those checks succeed. The receipt then separates submission from on-chain confirmation.
+
+**Try either path:**
+
+- **Explore without a wallet:** use the [landing simulator](https://intent-shield-self.vercel.app/#simulator) or [Security Demo Lab](https://intent-shield-self.vercel.app/app/demo).
+- **Make a Devnet transfer:** open the [workspace](https://intent-shield-self.vercel.app/app), connect Phantom on Devnet, and follow the [setup guide](#solana-devnet-setup).
+
+<a id="key-features"></a>
+
+## ✨ Key features
+
+| Feature | What is implemented |
+|---|---|
+| **AI intent parsing** | Plain language becomes an editable, schema-validated draft. Address and amount guards run on both server and client. |
+| **OpenRouter model switcher** | Select from the operator's server-side allowlist; see which model answered and when fallback was used. |
+| **Manual entry** | Enter recipient and amount directly when AI is unavailable or unnecessary. All transaction checks still run. |
+| **Deterministic verification** | Compare source, fee payer, full recipient, integer lamports, network context, and allowed instructions against the approved intent. |
+| **Solana Devnet simulation** | Check balance and fee, then simulate the same unsigned message before signing. |
+| **Phantom wallet signing** | Request explicit sign-only approval through Wallet Standard, then validate the returned message and signature before broadcast. |
+| **Transaction receipt** | Track submitted, confirmed, failed, or unresolved status; inspect a Devnet Explorer link and recover a wallet-scoped pending receipt. |
+| **Security Demo Lab** | Run exact-match, changed-amount, lookalike-recipient, extra-instruction, and mutated-byte scenarios through the real verifier. |
+| **Interactive landing** | A controlled simulator, responsive product previews, and reduced-motion-aware visuals explain the flow before connecting a wallet. |
+
+<a id="how-it-works"></a>
+
+## 🧭 How it works
+
+```mermaid
+flowchart TD
+    A["1 · Natural-language intent or manual entry"] --> B["Review and explicitly approve the draft"]
+    B --> C["2 · Construct the final transaction message"]
+    C --> D["3 · Decode bytes and verify against approval"]
+    D --> E["4 · Check balance, fee, and Devnet simulation"]
+    E --> F["5 · Recheck integrity and request wallet signing"]
+    F --> G["Validate returned bytes and Ed25519 signature"]
+    G --> H["6 · Broadcast the signed transaction"]
+    H --> I["7 · Read on-chain confirmation and show receipt"]
+    D -->|"Mismatch or unreadable message"| X["Stop · signing disabled"]
+    E -->|"Failure or unavailable result"| X
+    G -->|"Changed message or invalid signature"| Y["Stop · no broadcast"]
+```
+
+1. **Review the intent.** Approval fixes the sender, full recipient, lamports, and Devnet context. Editing the draft invalidates approval.
+2. **Verify what will be signed.** The app decodes the compiled message rather than trusting the draft or a UI summary.
+3. **Simulate before signing.** An explicit successful response is required; timeout or malformed data does not count as success.
+4. **Keep the reviewed bytes intact.** The app rechecks the message at the signing boundary and rejects wallet modifications.
+5. **Confirm honestly.** One application broadcast request starts status tracking. Only RPC evidence of `confirmed` or `finalized`, without a transaction error, produces a confirmed receipt.
+
+> [!NOTE]
+> **Submitted ≠ confirmed.** An interrupted broadcast response can leave the result unresolved. Check the known signature before trying another transfer; the app does not automatically re-sign.
+
+<a id="security-architecture"></a>
+
+## 🛡️ Security architecture
+
+### Trust boundaries
+
+| Boundary | Responsibility and limits |
+|---|---|
+| **User → approved intent** | You review recipient and amount. Matching a mistaken approval still produces the wrong transfer for you. |
+| **AI provider → draft** | Model output is untrusted. Schema validation and literal address/amount guards constrain it; only explicit user approval establishes intent. |
+| **Message → pure verifier** | Deterministic code checks decoded bytes. The verifier has no AI, wallet, RPC, or React dependency. |
+| **App → Devnet RPC** | Genesis hash, balance, fees, simulation, and confirmation come from the configured RPC. This is an RPC trust dependency, not independent consensus verification. |
+| **App → wallet** | The wallet signs without sending. The app then checks exact returned bytes and the approved account's Ed25519 signature. |
+
+### Checks that gate signing and broadcast
+
+- **Network validation:** public configuration accepts only `devnet`; the configured RPC must report the expected Devnet genesis hash.
+- **Instruction allowlist:** one native System Program transfer. The builder adds a fixed compute budget of **1,000 CU at 1 micro-lamport per CU**; other values or extra instructions are rejected. A lone transfer is also accepted by the verifier.
+- **Exact intent comparison:** full recipient, source, fee payer, account roles, and `BigInt` lamports must match. Unsupported messages and address lookup tables fail closed.
+- **Byte integrity:** verification and simulation bind to the same message fingerprint. The message is reverified at signing; returned message bytes must equal the reviewed bytes.
+- **Signature validation:** the approved sender must be the sole signer, and its Ed25519 signature must validate before the signed wire is broadcast.
+- **State integrity:** stale approvals, duplicate signing clicks, account changes, expiry, cancellation, and late wallet responses cannot authorize a new broadcast.
+
+Simulation runs on the unsigned transaction with signature checks disabled and without replacing its blockhash. **It does not validate a wallet signature**; that validation happens after signing. The app makes one `sendTransaction` call, while the RPC may rebroadcast the same signed bytes using its retry policy.
+
+<details>
+<summary>Threat model: what is blocked, and what remains outside scope</summary>
+
+| Threat | Implemented response |
+|---|---|
+| AI invents a recipient or amount | Reject ungrounded fields; require correction and explicit review |
+| Recipient, amount, or instructions change | Compare decoded values and enforce the instruction allowlist |
+| Bytes change after review or inside the wallet | Recheck fingerprint and byte equality; refuse broadcast |
+| Wallet returns a forged signature | Verify Ed25519 signature against the approved account |
+| Wrong network, failed simulation, unreadable RPC | Disable signing rather than infer success |
+| Duplicate clicks or stale asynchronous work | Signing lock, approval identity, and cancellation guards |
+| Broadcast response is lost | Track the known signature and preserve an unresolved state |
+
+**Outside scope:** recipient reputation, phishing-site detection, all-scam detection, compromised browsers or wallets, malicious extensions, and arbitrary Solana programs. Simulation describes a point in time and cannot guarantee eventual execution.
+
+</details>
+
+See the [security policy](SECURITY.md) and the [limitations](#limitations--security-disclaimer). No independent security audit or certification is claimed.
+
+<a id="technology-stack"></a>
+
+## 🧰 Technology stack
+
+Versions below are pinned in [`package.json`](package.json); [`package-lock.json`](package-lock.json) records the install graph.
+
+| Layer | Dependencies and versions |
+|---|---|
+| Application | Next.js **16.4.5**, React / React DOM **19.3.1**, TypeScript **6.0.3** |
+| Solana | `@solana/kit` **8.6.0**, `@solana/react` **8.6.0**, `@solana/kit-plugin-wallet` **0.23.0**, `@solana-program/system` **0.16.0** |
+| UI and styling | Tailwind CSS **4.3.5**, Radix UI **1.8.1**, `lucide-react` **1.70.0**, GSAP **3.15.1** |
+| Validation | Zod **4.6.7** |
+| Unit and integration testing | Vitest **5.1.0**, Testing Library React **16.3.3**, jsdom **31.0.0** |
+| Browser testing | Playwright **1.65.0**, axe-core Playwright **4.14.0** |
+| Tooling | ESLint **9.39.5**, `tsx` **4.23.15**, Node.js **≥24** |
+
+OpenRouter-compatible HTTP requests run server-side. There is no custom on-chain program to deploy; transfers use Solana's native System Program. The production build explicitly uses Webpack through `npm run build`.
+
+<a id="architecture--project-structure"></a>
+
+## 🏗️ Architecture & project structure
 
 ```mermaid
 flowchart LR
-  U[Browser] --> UI[Next.js App Router UI]
-  UI --> W[Wallet Standard wallet<br/>solana:signTransaction]
-  UI --> V[Pure deterministic verifier]
-  UI --> RPC[Solana Kit RPC → Devnet]
-  UI --> AI[/api/ai/parse-intent · /api/ai/explain/]
-  AI --> P[OpenRouter-compatible provider<br/>server-only key]
-  V -. same bytes .- RPC
-  W -. signs reviewed bytes .- UI
+    subgraph Browser["Browser · review and transaction pipeline"]
+        UI["Next.js workspace"] --> Intent["Approved intent"]
+        Intent --> Builder["Transaction builder"]
+        Builder --> Verifier["Pure deterministic verifier"]
+        Verifier --> Gate["Simulation and signing gate"]
+        Lab["Controlled Demo Lab"] --> Verifier
+        Receipt["Receipt and status recovery"]
+    end
+    subgraph Server["Server · optional AI"]
+        API["AI routes and model allowlist"]
+    end
+    API --> Provider["External OpenRouter-compatible provider"]
+    UI -->|"Intent text / selected model"| API
+    API -.->|"Untrusted draft / explanation"| UI
+    Gate <-->|"Sign-only request / signed bytes"| Wallet["Phantom · Wallet Standard"]
+    Gate <-->|"Genesis, fee, simulation, broadcast"| RPC["Solana Devnet RPC"]
+    RPC -->|"Status and transaction data"| Receipt
 ```
 
-**Signing contract (single builder, no re-building after review):**
-`approved intent → compile FINAL message → decode + allowlist + compare → preflight + simulate the same bytes → re-verify fingerprint at the boundary → wallet signs → verify returned bytes + Ed25519 signature → broadcast those bytes once → poll status`.
+Intent text sent for parsing reaches the configured AI provider, including any recipient written in that text. The explanation endpoint sends bounded verdict details without addresses. Provider credentials stay in server-only modules; the browser talks directly to Devnet RPC for the transaction pipeline.
+
+```text
+IntentShield/
+├── public/brand/               # Tracked SVG project mark
+├── src/
+│   ├── app/                    # Landing, workspace, demo, receipt, API routes
+│   ├── components/             # Shared layout and UI primitives
+│   ├── config/                 # Environment validation and Devnet scope
+│   ├── features/
+│   │   ├── intent/             # Draft parsing, model selection, approval
+│   │   ├── verification/       # Message decoding and deterministic checks
+│   │   ├── transfer/           # State machine, simulation, sign, submit
+│   │   ├── wallet/             # Wallet Standard connection and balance
+│   │   ├── receipt/            # RPC receipts and scoped recovery
+│   │   ├── demo/               # Controlled verifier scenarios
+│   │   └── landing/            # Marketing UI, motion, sample simulator
+│   ├── lib/solana/             # RPC adapter and network guard
+│   ├── server/                 # AI client, request limits, safe logging
+│   ├── styles/                 # Design tokens and landing styles
+│   └── test/                   # Fixtures, fakes, test setup
+├── tests/                      # Unit, integration, browser suites
+├── scripts/                    # Fixture generation and live Devnet smoke test
+├── .github/                    # CI workflow and PR template
+├── .env.example                # Public defaults; empty AI credentials
+└── SECURITY.md
+```
+
+<details>
+<summary>Developer map: core modules and routes</summary>
+
+| Start here | Responsibility |
+|---|---|
+| [`verify-native-sol-transfer.ts`](src/features/verification/lib/verify-native-sol-transfer.ts) | Pure transaction verifier |
+| [`sign-transfer.ts`](src/features/transfer/lib/sign-transfer.ts) | Byte and signature checks at the wallet boundary |
+| [`machine.ts`](src/features/transfer/machine.ts) | Transfer state transitions and guards |
+| [`rpc.ts`](src/lib/solana/rpc.ts) | Devnet RPC adapter |
+| [`src/server/ai/`](src/server/ai/) | Configuration, provider calls, fallback, and handlers |
 
 | Route | Purpose |
 |---|---|
-| `/` | Eight-section landing (hero, problem, simulator, how it works, product, security, developers, final CTA), plus a technology-ribbon interlude |
-| `/app` | Real Devnet workspace: wallet, composer, approval, inspector, simulation, signing, receipt |
-| `/app/demo` | Demo Lab — controlled mismatches through the production verifier (never signs) |
-| `/tx/[signature]` | Receipt read from Devnet RPC; "Confirmed" only with RPC evidence |
-| `POST /api/ai/parse-intent` | Untrusted structured draft (Zod-validated, 300 chars max, 8 s timeout, 1 retry, rate-limited) |
-| `POST /api/ai/explain` | Optional explanation of an existing verdict (receives no addresses) |
-| `GET /api/ai/models` | Server allowlist of selectable models: public ids, labels, default — no keys |
-| `GET /api/health` | `{ status, service, cluster }` only |
+| `/` · `/app` · `/app/demo` | Landing, transfer workspace, controlled Demo Lab |
+| `/tx/[signature]` | Public Devnet receipt lookup for a supplied signature |
+| `POST /api/ai/parse-intent` | Structured, untrusted transfer draft |
+| `POST /api/ai/explain` | Optional explanation of an existing verdict |
+| `GET /api/ai/models` | Public allowlisted model IDs, labels, default, and availability |
+| `GET /api/health` | Minimal service and cluster health payload |
 
-Key modules: `src/features/verification/lib/verify-native-sol-transfer.ts` (pure verifier), `src/features/transfer/lib/sign-transfer.ts` (sign boundary), `src/features/transfer/machine.ts` (state machine), `src/server/ai/*` (server-only AI).
+</details>
 
-## Tech stack
+<a id="getting-started"></a>
 
-Next.js 16 (App Router; Webpack production build, Turbopack development) · React 19 · TypeScript 6 (strict) · `@solana/kit` 8 · `@solana-program/system` · `@solana/kit-plugin-wallet` (Wallet Standard) · Tailwind CSS 4 · Radix UI · Zod 4 · GSAP 3 + ScrollTrigger + SplitText (landing only, lazy, reduced-motion aware) · Vitest 5 + Testing Library · Playwright 1.65 + axe-core.
+## 🚀 Getting started
 
-## Getting started
+### Prerequisites
 
-Requirements: **Node.js ≥ 24**, npm.
+- **Node.js 24 or later** and npm.
+- A modern browser with WebCrypto Ed25519 support.
+- For real Devnet transfers: Phantom or another Wallet Standard wallet supporting `solana:signTransaction`, plus Devnet SOL. Wallet-free demos do not need either.
+
+### Install and run locally
 
 ```bash
-npm install
-cp .env.example .env.local   # public Devnet values; AI keys optional
-npm run dev                  # http://localhost:3000
+git clone https://github.com/lidxgoesgiri/IntentShield.git
+cd IntentShield
+npm ci
+cp .env.example .env.local
+npm run dev
 ```
 
-To use the real workflow you need a Wallet Standard Solana wallet (Phantom, Solflare, Backpack…) set to **Devnet**, funded from the [Solana Devnet faucet](https://faucet.solana.com). The wallet must support `solana:signTransaction`.
+In PowerShell, use `Copy-Item .env.example .env.local` for the copy step. Open [localhost:3000](http://localhost:3000). The template supports manual entry immediately; AI requires the [configuration below](#ai-configuration).
 
-### Environment
+### Environment variables
 
-| Variable | Scope | Notes |
+| Variable | Scope | Default / purpose |
 |---|---|---|
-| `NEXT_PUBLIC_SOLANA_RPC_URL` | public | Devnet RPC (https). The app verifies its genesis hash. |
-| `NEXT_PUBLIC_SOLANA_CLUSTER` | public | Must be `devnet`; anything else fails validation. |
-| `NEXT_PUBLIC_APP_URL` | public | Used for metadata. |
-| `NEXT_PUBLIC_REPOSITORY_URL` / `NEXT_PUBLIC_DOCS_URL` | public | Repository link and optional docs URL. With a repository configured, docs default to its README. |
-| `OPENROUTER_API_KEY` | **server only** | Without it the AI routes answer `503 AI_UNAVAILABLE` and the manual flow is used. |
-| `OPENROUTER_MODEL` | **server only** | Default model (`provider/model[:variant]`); may be a comma-separated list whose first entry is the default. |
-| `OPENROUTER_MODELS` | **server only** | Optional extra selectable models (comma-separated). Malformed ids are dropped; ids outside the allowlist are rejected with `400`. |
-| `AI_BASE_URL`, `AI_REQUESTS_PER_MINUTE`, `AI_DAILY_REQUEST_BUDGET` | server only | Optional overrides. |
+| `NEXT_PUBLIC_SOLANA_RPC_URL` | Browser | `https://api.devnet.solana.com`; must report Devnet's genesis hash |
+| `NEXT_PUBLIC_SOLANA_CLUSTER` | Browser | `devnet`; other values are rejected |
+| `NEXT_PUBLIC_APP_URL` | Browser | `http://localhost:3000`; application metadata URL |
+| `NEXT_PUBLIC_REPOSITORY_URL` | Browser | Repository link shown in the UI |
+| `NEXT_PUBLIC_DOCS_URL` | Browser | Optional; defaults to the configured repository README |
+| `OPENROUTER_API_KEY` | **Server only** | Empty; set privately to enable AI together with a valid model |
+| `OPENROUTER_MODEL` | **Server only** | Empty; default model ID, or comma-separated IDs with the first as default |
+| `OPENROUTER_MODELS` | **Server only** | Optional comma-separated additional allowed model IDs |
+| `AI_BASE_URL` | **Server only** | `https://openrouter.ai/api/v1`; compatible API base URL |
+| `AI_REQUESTS_PER_MINUTE` | **Server only** | `10`; best-effort per-client request limit |
+| `AI_DAILY_REQUEST_BUDGET` | **Server only** | `500`; per-process daily provider-attempt budget |
 
-Never put secrets in `NEXT_PUBLIC_*` variables.
+Keep credentials in `.env.local` or hosting environment settings. Never prefix secrets with `NEXT_PUBLIC_`. The template is tracked; local environment files are ignored.
 
-## Scripts
+### Check and build
 
-| Command | What it does |
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm start
+```
+
+`npm start` serves the completed production build on port 3000. For browser testing and the separate live smoke command, see [testing & verification](#testing--verification).
+
+<a id="ai-configuration"></a>
+
+## 🤖 AI configuration
+
+1. Create a key in [OpenRouter's key settings](https://openrouter.ai/settings/keys), then set `OPENROUTER_API_KEY` privately in `.env.local`.
+2. Copy an exact available model ID from the [OpenRouter model catalog](https://openrouter.ai/models) into `OPENROUTER_MODEL`. **There is no built-in default model.**
+3. Optionally add comma-separated IDs to `OPENROUTER_MODELS`. The combined, deduplicated server allowlist supports up to 12 models.
+4. Restart the local server. Open `/app` and choose a model in the composer. The selection is stored locally and restored only while still allowlisted.
+
+The [OpenRouter quickstart](https://openrouter.ai/docs/quickstart) covers provider setup. The app's `GET /api/ai/models` endpoint exposes availability and model labels, never credentials.
+
+| Situation | App behavior |
 |---|---|
-| `npm run dev` | Development server |
-| `npm run lint` | ESLint (Next core-web-vitals + TS + architectural import boundaries) |
-| `npm run typecheck` | `next typegen && tsc --noEmit` (typed routes) |
-| `npm test` | Vitest unit + integration suites |
-| `npm run test:e2e` | Playwright against a production build (test wallet + mocked Devnet RPC) |
-| `npm run build` | Production build using `next build --webpack` |
-| `npm run smoke:devnet` | Opt-in live Devnet pipeline that signs and broadcasts with a disposable test key; requires explicit authorization (see below) |
+| Missing key, missing model, or invalid AI configuration | Parse/explain return `503 AI_UNAVAILABLE`; model listing reports unavailable; manual entry stays available |
+| Browser requests a model outside the allowlist | Reject with HTTP `400` before calling the provider |
+| Selected model fails or produces invalid output | At most one additional provider attempt: health-aware alternative, or one retry when only one model is configured |
+| All attempts fail or request budget is exhausted | Show AI unavailable and offer manual entry |
 
-The production build explicitly uses Webpack because Turbopack's PostCSS child-process IPC repeatedly failed in the local audit environment. This is an environment-specific build workaround, not evidence of a CSS defect or a claim that Turbopack itself has been repaired.
+**Bounded, optional assistance.** Failed models have a 60-second process-local cooldown. Calls have an 8-second timeout within an 18-second overall provider deadline. Intent input is limited to 300 characters; provider bodies are capped at 64 KiB and browser API responses at 16 KiB. Changing models cannot change the deterministic verdict or signing policy.
 
-Playwright normally uses its pinned Chromium browser. For local QA with an installed Chrome, PowerShell users may run `$env:E2E_BROWSER_CHANNEL='chrome'; npm run test:e2e`. `E2E_SKIP_BUILD=1` is only appropriate after building the current source. Tests use a test wallet and mocked RPC responses; they do not request a real wallet signature or spend funds.
+**Rate limits and cost control.** Parse and explain share process-local counters. Fallback consumes another provider attempt; daily counters reset in UTC. Restarts and separate serverless instances do not share these counters, so they are not a global spending cap. Provider limits and model availability apply separately; configure an account/key spending limit with the provider.
 
-### Live Devnet smoke test
+<a id="solana-devnet-setup"></a>
 
-`npm run smoke:devnet` runs the same production modules against real Devnet: Devnet guard → build → verify → preflight → simulate → sign boundary → single broadcast → confirmation → re-verification of the on-chain bytes, plus a negative control (amount ×8 must be blocked). The sender is a disposable test-only key stored in `.devnet/` (git-ignored). This command **creates a blockchain transaction**: run it only with the wallet owner's explicit approval. A previous smoke attempt stopped at a public RPC airdrop HTTP 410; this historical failure is separate from the verified transaction below. Evidence is written to `artifacts/` (git-ignored).
+## 🌐 Solana Devnet setup
 
-## Testing summary
+1. **Switch Phantom to Devnet.** Open your profile → **Settings → Developer Settings → Testnet Mode**, enable it, then choose **Solana Devnet**. See [Phantom's official testnet guide](https://help.phantom.com/articles/view-testnets-in-phantom-5997313271699).
+2. **Fund the test wallet.** Copy its public address and request Devnet SOL from the [official Solana Faucet](https://faucet.solana.com/). Select Devnet; faucet availability and rate limits may vary. Devnet SOL has no monetary value.
+3. **Connect in the workspace.** Open [the live app](https://intent-shield-self.vercel.app/app) or your local `/app`, connect the wallet, and check the Devnet indicator.
+4. **Prepare a small transfer.** Use a different recipient's full address, for example `Send 0.01 SOL to <full recipient Devnet address>`, or select **Enter Manually**. Replace the address placeholder before submitting. The app refuses self-transfers and amounts above 1 SOL; allow enough balance for the fee.
+5. **Review → verify → simulate → sign.** Check the complete address and amount. After approval and successful checks, explicitly authorize signing in Phantom.
+6. **Inspect the receipt.** Wait for confirmed status and open its **Solana Explorer** link. The URL must include `cluster=devnet`.
 
-The current revision passed **419/419 unit/integration tests across 31 files** and **113/113 browser E2E tests** (no failed, skipped or flaky tests), together with lint, typecheck and the default production build. E2E ran against a local production build in an installed Chrome, with a test wallet and mocked Devnet RPC. Earlier totals are superseded: 339/107 after the 8 Nov remediation, 265 unit/integration tests at the 7 Nov audit baseline (when 83 browser tests could not launch because the pinned Playwright browser was absent), and 227/74 before that.
+A wallet that only supports sign-and-send cannot use this verification boundary. If the wallet inserts instructions or otherwise changes the reviewed message, IntentShield refuses to broadcast.
 
-The suites include stale drafts, signing cancellation and late wallet responses, malformed RPC responses, ambiguous submission, receipt recovery, wallet-scoped receipt privacy, AI cancellation and bounded responses, shared AI budgets, runtime motion preferences, and product routes at 320/375/768/1024/1440 px. E2E never calls a real AI provider. A local lab probe of the landing page (375×812 mobile emulation, 4× CPU throttling, five fresh runs) measured a median LCP of 588 ms after the hero copy stopped using a delayed opacity fade, down from 1,944 ms; this is lab timing, not a field Core Web Vitals percentile. Raw test output, probes and screenshots are kept locally and are not published.
+<a id="testing--verification"></a>
 
-### Verified historical Devnet transaction
+## 🧪 Testing & verification
 
-A real Devnet transfer that the maintainer reports signing with Phantom was re-checked read-only against live Devnet RPC during remediation: correct Devnet genesis hash, `finalized` status, `meta.err: null`, a **0.01 SOL** native transfer and an actual network fee of **5,001 lamports (0.000005001 SOL)**. The check used both the current RPC adapter/receipt loader and the browser receipt page; it did **not** connect a wallet, obtain a new signature or send a new transaction. The signature is intentionally not published, to protect the maintainer's wallet privacy. This proof does not establish that every current wallet/browser combination has been exercised.
+| Command | Scope |
+|---|---|
+| `npm test` | Vitest unit and integration suites |
+| `npm run test:watch` | Vitest watch mode |
+| `npm run lint` | ESLint, including architectural import boundaries |
+| `npm run typecheck` | Next.js route type generation and TypeScript checks |
+| `npm run build` | Optimized production build using Webpack |
+| `npm run test:e2e` | Playwright against a local production server; test wallet and mocked RPC/AI |
 
-The suites cover the PRD matrices:
+Install Playwright's browser before the first E2E run:
 
-- **Unit/integration (Vitest):** amount → lamports (UT-01…04), address validation (UT-05/06), verifier matched/blocked/unable cases incl. byte-level tampering, lookup tables, wrong cluster (UT-07…13), state machine guards incl. duplicate clicks, wallet change, rejection, expiry, submitted≠confirmed, on-chain failure (UT-14…20), AI fallback & guards (UT-15), sign boundary with mutating/forging/rejecting wallets, RPC fakes, receipt mapping, landing import-boundary graph (LP-11), simulator states and races (LP-05…10, LP-18).
-- **E2E (Playwright):** eight-section structure, CTAs & links, simulator, no-JS and reduced motion, axe WCAG 2.2 AA scans, keyboard focus order, no horizontal overflow from 320 px to 1920 px, Demo Lab blocking, and the full wallet flow (connect → approve → verify → simulate → sign once → submit → confirm) plus rejection, RPC outage, wallet mutation, insufficient balance, wrong network and edit-after-approve.
+```bash
+npx playwright install chromium
+npm run test:e2e
+```
 
-## Limitations (honest scope)
+The E2E configuration builds the app by default and serves it on port **3100**. On Linux CI, browser setup uses `npx playwright install --with-deps chromium`. For local QA with installed Chrome, PowerShell users can run:
 
-- Devnet only; mainnet is disabled. Native SOL transfers only (no SPL tokens, swaps, NFTs, or arbitrary programs).
-- Intent matching does not establish whether a recipient is trustworthy.
-- Requires a wallet with `solana:signTransaction`; wallets that only sign-and-send cannot be verified and are refused.
-- Wallets may rewrite unsigned transactions (Phantom adds priority-fee instructions when a transaction has no compute budget). IntentShield therefore sets a small fixed compute budget so the signed bytes stay identical; if a wallet still changes anything (for example by adding Lighthouse assertions), IntentShield refuses to send and names the change.
-- Signature verification uses WebCrypto Ed25519 (modern browsers); unsupported browsers fail closed.
-- Decorative landing animations follow the operating system's reduced-motion setting; there is no separate in-page pause control.
-- AI parse and explain share in-memory rate and daily-attempt counters within one process. Separate serverless instances and restarts do not share those counters, so this is **not a global spending hard cap**. Configure a provider/key spending limit for account-level cost control; no provider billing setting was changed during remediation.
-- An interrupted broadcast response is `unknown`, not proof that nothing was sent. A public signature is retained in session storage, scoped by Devnet and the originating wallet, for receipt recovery. Disconnecting or switching accounts hides the other wallet's details; private keys, signed wire payloads, and approvals are not stored there. Check that signature before retrying a transfer.
-- The landing never lists a visitor's transactions or links a maintainer's transaction as default history. Receipt permalinks remain public lookups of the explicitly supplied signature; sharing one exposes that public on-chain transaction.
-- AI response streams are bounded (provider 64 KiB, client API 16 KiB) and request deadlines include the body read. Analysis can be cancelled without accepting a late draft. Offline guard fixtures test deterministic validation, not live model accuracy.
-- CSP uses `'unsafe-inline'` for Next.js hydration scripts; `script-src-attr 'none'`, `frame-src 'none'`, and other restrictive directives reduce exposure but do not eliminate the inline-script trade-off.
+```powershell
+$env:E2E_BROWSER_CHANNEL = 'chrome'
+npm run test:e2e
+```
 
-## AI assistance disclosure
+<details>
+<summary>What the automated suites exercise</summary>
 
-- **Tools used:** Claude Code (Anthropic) and Codex (OpenAI) assisted with implementation, tests, review, and documentation. At runtime, the app optionally calls an OpenRouter-compatible model (configured by the operator) for draft parsing and explanations. Tool use does not replace human review or establish independent security certification.
-- **Human review and verification:** see the test suites and smoke-test evidence; claims in this README are limited to what those runs demonstrate.
-- **Third-party libraries:** listed in `package.json` (Next.js, React, Solana Kit, Radix UI, Tailwind CSS, GSAP, Zod, Vitest, Playwright, axe-core, lucide-react) under their respective licenses. Fonts are self-hosted under the SIL Open Font License 1.1: Basement Grotesque by basement.studio (display, `src/app/fonts/basement-grotesque/` with its license), Instrument Sans and IBM Plex Mono (via `next/font`).
+- **Intent and verifier:** decimal-to-lamport precision, literal AI guards, address validation, single-lamport mismatches, unsupported messages, extra instructions, lookup tables, network mismatch, and byte mutation.
+- **Transaction lifecycle:** approval invalidation, fee/balance preflight, simulation errors, wallet rejection, invalid signatures, changed wallet payloads, duplicate clicks, expiry, cancellation, ambiguous submission, and receipt recovery.
+- **AI boundaries:** allowlisted model selection, fallback, request budgets, bounded response reads, cancellation, and independence from verification/signing.
+- **Browser experience:** full controlled transfer flow, Demo Lab, wallet-scoped receipt privacy, responsive layouts, keyboard navigation, axe accessibility checks, and reduced-motion behavior.
 
-Not affiliated with the Solana Foundation, MLH, or any wallet provider.
+</details>
+
+### Verified local results
+
+Local verification on **8 November 2026**:
+
+| Check | Result |
+|---|---|
+| Vitest unit and integration suites | **419/419 passed** across 31 files |
+| Playwright browser suites | **113/113 passed** across 15 files |
+| ESLint, TypeScript, production build | **Passed** |
+
+Playwright ran in installed Chrome against the same completed local production build (`E2E_BROWSER_CHANNEL=chrome`, `E2E_SKIP_BUILD=1`), using a test wallet and mocked RPC/AI. No live AI provider or real wallet transaction was used.
+
+These are local checks, not a claim about the latest hosted CI run. The [CI workflow](.github/workflows/ci.yml) defines separate quality and mocked-browser jobs.
+
+### Controlled tests versus real transactions
+
+| Evidence type | Uses real Devnet? | Signs or broadcasts? |
+|---|---|---|
+| Landing simulator / Security Demo Lab | No; controlled fixtures | No |
+| Vitest / Playwright suites | No; fakes and mocks for external services | Test signatures only; no live broadcast |
+| `npm run smoke:devnet` | Yes | Yes, with a disposable test key; not Phantom |
+| Manual Phantom transfer | Yes | Yes, only after the user's wallet approval |
+
+**Opt-in live smoke test:** `npm run smoke:devnet` exercises the production transfer modules against real Devnet, checks the confirmed on-chain message, and includes a negative amount-mismatch control. It creates or loads a disposable key in ignored `.devnet/` storage and writes local evidence under ignored `artifacts/`. Run it only when you intend to create a Devnet transaction and have the wallet owner's authorization. It was **not run for this documentation update**.
+
+<a id="live-demo--evidence"></a>
+
+## 🔗 Live demo & evidence
+
+| Resource | Link / status |
+|---|---|
+| Production website | [intent-shield-self.vercel.app](https://intent-shield-self.vercel.app/) |
+| Transfer workspace | [Open `/app`](https://intent-shield-self.vercel.app/app) |
+| Wallet-free security demo | [Open `/app/demo`](https://intent-shield-self.vercel.app/app/demo) |
+| Service health | [Open `/api/health`](https://intent-shield-self.vercel.app/api/health) — service status, not transaction proof |
+| Solana Devnet Explorer | [Open Explorer on Devnet](https://explorer.solana.com/?cluster=devnet) |
+| YouTube video | [Watch the demo](https://youtu.be/eTGk3J56Zss) |
+| Public transaction signature / receipt | **Pending publication with the wallet owner's consent.** No signature is included here. |
+
+<!-- TODO: Add an owner-approved public Devnet signature and its Explorer transaction URL. -->
+
+The production website, workspace, Demo Lab, health endpoint, and logo returned HTTP **200** during the 8 November 2026 documentation check. Reachability is not proof of a completed wallet transaction.
+
+Historical read-only Devnet checks are kept locally; their private artifacts are not bundled with this repository. They are separate from mocked test results and do not establish a fresh Phantom transfer on this revision. For your own evidence, use the receipt's Explorer link after confirming a transfer; sharing its signature exposes that public on-chain transaction.
+
+<a id="limitations--security-disclaimer"></a>
+
+## ⚠️ Limitations & security disclaimer
+
+> [!WARNING]
+> **Hackathon MVP, not universal scam protection.** IntentShield checks a narrow transaction shape against your approval. It cannot determine whether sending to that recipient is a good decision.
+
+- **Devnet only; native SOL only; up to 1 SOL.** No mainnet, SPL tokens, NFTs, swaps, arbitrary programs, address lookup tables, or self-transfers.
+- **AI can misunderstand.** Review every field. Literal guards reduce invented data; they do not prove semantic accuracy or detect every malicious request.
+- **Simulation and RPC have limits.** The configured RPC is trusted for network and chain data. A successful simulation cannot guarantee inclusion or future execution.
+- **Wallet/browser compatibility matters.** Sign-only Wallet Standard support and WebCrypto Ed25519 are required. Wallet modifications to reviewed bytes are blocked, including added wallet security instructions.
+- **Privacy is scoped, not confidential.** Receipt recovery keeps a public signature in session storage, scoped to wallet and Devnet; it does not store private keys, signed wire payloads, or approvals. Receipt URLs are public lookups.
+- **Browser security remains a dependency.** Compromised wallets, extensions, or browsers are outside scope. CSP currently allows inline hydration scripts; it does not eliminate XSS risk.
+- **No independent audit is claimed.** Automated tests and internal review do not amount to security certification.
+
+<a id="hackathon-information"></a>
+
+## 🏁 Hackathon information
+
+Prepared for the **MLH Solana Hackathon 2026**. The [official event page](https://events.mlh.com/events/15200-solana-hackathon) describes both AI-assisted transaction interfaces and tools that explain transactions before signing as AI Track examples.
+
+| Consideration | IntentShield's relevance |
+|---|---|
+| **AI Track** | AI turns natural language into a reviewable draft and explains deterministic results; the wallet signs verified transactions that are simulated, submitted, and confirmed on Solana Devnet. |
+| **Top 3 Overall** | A working end-to-end product with an explicit security boundary, reproducible controlled demos, tests, and a live deployment. This describes the submission's intended fit, not an award or eligibility determination. |
+
+Organizer rules and eligibility decisions remain authoritative. This README does not certify eligibility or claim that every repository asset was created within the hacking window. See the [MLH standard hackathon rules](https://github.com/MLH/mlh-policies/blob/main/standard-hackathon-rules.md) alongside the event-specific terms.
+
+### AI assistance disclosure
+
+**Claude Code (Anthropic)** and **Codex (OpenAI)** assisted with implementation, testing, review, and documentation. The maintainer directs and reviews the work. Runtime AI is a separate, optional OpenRouter-compatible integration whose model depends on operator configuration.
+
+Third-party libraries and assets retain their own attribution and licenses. AI assistance does not replace human review or independent security evaluation. IntentShield is not affiliated with MLH, the Solana Foundation, or any wallet provider.
+
+<a id="roadmap"></a>
+
+## 🗺️ Roadmap
+
+| Available now | Future work — not implemented |
+|---|---|
+| Devnet native SOL transfers with explicit approval | SPL transfers with mint and precision checks |
+| Deterministic verification and exact-byte signing checks | Decoding and previews for selected dApp instructions |
+| AI/manual entry, model selection, and bounded fallback | Evaluation of sourced program-risk signals |
+| Simulation, receipts, recovery, and controlled Demo Lab | Broader wallet compatibility and independent security review |
+| Automated unit, integration, and mocked browser suites | Mainnet only after independent review and additional risk controls |
+
+Future support must preserve explicit approval, fail-closed verification, and the separation between AI assistance and signing authority.
+
+<a id="contributing"></a>
+
+## 🤝 Contributing
+
+Use [GitHub issues](https://github.com/lidxgoesgiri/IntentShield/issues) for reproducible bugs or focused proposals. For vulnerabilities, follow [SECURITY.md](SECURITY.md) and report privately.
+
+1. Work on a short-lived branch with a focused change.
+2. Keep AI output outside verification and signing authority; add regression coverage for security behavior changes.
+3. Run lint, typecheck, relevant tests, and the production build. Run the mocked browser suite when the user flow changes.
+4. Use Conventional Commits and open a PR against `main` with the [repository template](.github/pull_request_template.md). Label mock evidence and live transaction evidence accurately.
+
+Do not include credentials, seed phrases, private keys, local environment files, or private evidence artifacts. Review the license status below before reusing project code.
+
+<a id="license--acknowledgments"></a>
+
+## 📄 License & acknowledgments
+
+**No project-wide `LICENSE` file is currently included.** A public repository is not, by itself, an open-source license grant; contact the maintainer to clarify reuse permissions.
+
+Third-party dependencies and assets retain their respective licenses. The UI uses Basement Grotesque by basement.studio ([bundled OFL 1.1 license](src/app/fonts/basement-grotesque/LICENSE.txt)), Instrument Sans, and IBM Plex Mono. Dependency versions and the complete package list are available in [`package.json`](package.json).
