@@ -9,6 +9,17 @@
 
 ---
 
+## Try it in 60 seconds
+
+**Live app:** [intent-shield-self.vercel.app](https://intent-shield-self.vercel.app) (Solana Devnet only; nothing here can move real funds).
+
+- **No wallet needed:** open the [Demo Lab](https://intent-shield-self.vercel.app/app/demo), choose *Changed amount* or *Changed recipient*, and watch the same verifier that guards real transfers block the mismatch. The landing page simulator does the same with sample data.
+- **A real Devnet transfer:**
+  1. Use a Wallet Standard wallet that can sign without sending, such as Phantom, and switch it to **Solana Devnet** in its developer or testnet settings.
+  2. Get free Devnet SOL from the [Solana Faucet](https://faucet.solana.com). Devnet SOL has no value.
+  3. Open the [workspace](https://intent-shield-self.vercel.app/app), connect the wallet and describe a transfer, for example `Send 0.01 SOL to <full Devnet address>`. If AI drafting is unavailable, choose **Enter Manually**: verification never depends on AI.
+  4. Review the draft and approve it. IntentShield verifies and simulates the exact message, then asks your wallet to sign. The receipt links to Solana Explorer.
+
 ## What it does
 
 1. **Describe** a transfer in plain language (`Send 0.1 SOL to <full address>`) — or type the fields manually.

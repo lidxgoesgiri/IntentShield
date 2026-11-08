@@ -8,10 +8,12 @@ import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { Dialog } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/misc";
+import { LOW_DEVNET_BALANCE_LAMPORTS } from "@/config/product";
 import { formatLamportsAsSol } from "@/lib/format/sol";
 import { shortenAddress } from "@/lib/format/address";
 import { useBalance } from "../hooks/use-balance";
 import { useConnectedWallet } from "../hooks/use-connected-wallet";
+import { DevnetFaucetLink } from "./devnet-faucet-link";
 import { useProductContext } from "../product-context";
 
 function WalletGlyph({ icon, name }: { icon: string | null; name: string }) {
@@ -160,6 +162,11 @@ export function WalletConnectButton() {
             <Button variant="ghost" size="sm" className="mt-1" onClick={refresh} disabled={!canReadBalance || balance.status === "loading"}>
               Refresh balance
             </Button>
+            {balance.status === "ok" && balance.lamports < LOW_DEVNET_BALANCE_LAMPORTS ? (
+              <p className="mt-2 text-[0.875rem] text-silver">
+                Low on test funds? Copy the address above, then <DevnetFaucetLink className="min-h-0" />. Devnet SOL has no value.
+              </p>
+            ) : null}
           </div>
         </dl>
         {warning ? (

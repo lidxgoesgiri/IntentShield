@@ -25,6 +25,11 @@ export const LAMPORTS_PER_SOL = 1_000_000_000n;
 export const MAX_DEMO_SOL = "1";
 export const MAX_DEMO_LAMPORTS = 1_000_000_000n;
 
+/** Official Solana faucet for free Devnet test SOL. Only linked (new tab), never called by the app. */
+export const DEVNET_FAUCET_URL = "https://faucet.solana.com";
+/** Below 0.1 SOL the wallet dialog points to the faucet; a sufficient balance keeps the dialog clean. */
+export const LOW_DEVNET_BALANCE_LAMPORTS = 100_000_000n;
+
 /** Natural-language input limit (PRD FR-002 / §9.3). */
 export const MAX_INTENT_TEXT_LENGTH = 300;
 
