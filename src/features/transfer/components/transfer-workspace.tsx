@@ -73,7 +73,7 @@ export function TransferWorkspace() {
     recipient: touched.recipient || state.draft.source === "ai" || Boolean(approvalErrors),
   };
 
-  const approveHint = !wallet.address
+  const approveHint = !online ? "You are offline. Reconnect before approving a transfer." : !wallet.address
     ? "Connect a Devnet wallet to continue."
     : devnet.state !== "verified"
       ? devnet.state === "checking"
@@ -84,7 +84,7 @@ export function TransferWorkspace() {
         : !validation.ok
           ? "Complete a valid amount and full recipient address to approve."
           : null;
-  const canApprove = state.status === "DRAFT_READY" && Boolean(wallet.address) && devnet.state === "verified" && validation.ok;
+  const canApprove = online && state.status === "DRAFT_READY" && Boolean(wallet.address) && devnet.state === "verified" && validation.ok;
 
   const aiDisabledReason = !online
     ? "AI help is offline while your browser is offline. Enter the details manually."
@@ -95,6 +95,7 @@ export function TransferWorkspace() {
   const summary = explainSummary(state);
   const blockedStates = ["BLOCKED", "UNABLE_TO_VERIFY", "SIMULATION_FAILED"];
   const postSubmit = isPostSubmit(state.status);
+  const otherAccountReceipt = state.receipt && state.receipt.sender !== wallet.address;
   // Explain every stop that the inspector/simulation panels do not already explain
   // (sign-boundary blocks, network/blockhash failures before verification).
   const stopAlert =
@@ -112,6 +113,24 @@ export function TransferWorkspace() {
         }
       : null;
 
+  // Keep the original operation alive in the hook, but never present account A's
+  // draft, inspector or receipt as account B's history (or while disconnected).
+  if (otherAccountReceipt) {
+    const disconnected = !wallet.address;
+    return (
+      <section className="hairline-panel panel-space space-y-5" aria-label="Transaction account changed">
+        <Alert tone="info" title={disconnected ? "Transaction details hidden" : "Transaction belongs to a different wallet"}>
+          {disconnected
+            ? "Reconnect the wallet that sent this transaction to see its details. Tracking continues in the meantime."
+            : "Tracking continues for the previous account. Connect that wallet to see its transaction details. This account has no transaction shown here."}
+        </Alert>
+        {["CONFIRMED", "ONCHAIN_FAILED", "EXPIRED", "UNKNOWN"].includes(state.status) ? (
+          <Button variant="secondary" onClick={actions.reset}>Start a new transfer</Button>
+        ) : <p role="status" className="type-caption">Waiting for the previous operation to settle. No new signing request will be made.</p>}
+      </section>
+    );
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-12 lg:gap-8">
       {/* Left: describe + review (5/12) */}
@@ -124,6 +143,7 @@ export function TransferWorkspace() {
             text={state.composerText}
             onTextChange={actions.setComposerText}
             onAnalyze={() => void actions.analyze(ai.selectedModel)}
+            onCancel={actions.cancelAnalysis}
             onManual={() => {
               actions.enterManually();
               document.getElementById("amount-sol")?.focus();
@@ -168,7 +188,7 @@ export function TransferWorkspace() {
           <span className="type-caption">Real Devnet RPC</span>
         </PanelHeading>
         <TransactionStepper status={state.status} />
-        <TransactionRecovery currentSignature={state.receipt?.signature} />
+        <TransactionRecovery walletAddress={wallet.address} currentSignature={state.receipt?.signature} />
 
         <p aria-live="polite" className="flex items-start gap-2 text-[0.95rem] text-white">
           {working || state.status === "AWAITING_WALLET" || state.status === "CONFIRMING" || state.status === "SUBMITTED" ? (

@@ -1,4 +1,4 @@
-import { generateKeyPairSigner, getBase64Decoder, getBase64EncodedWireTransaction, compileTransaction, createTransactionMessage, pipe, setTransactionMessageFeePayer, setTransactionMessageLifetimeUsingBlockhash, appendTransactionMessageInstructions, type Blockhash } from "@solana/kit";
+import { getBase64EncodedWireTransaction, compileTransaction, createTransactionMessage, pipe, setTransactionMessageFeePayer, setTransactionMessageLifetimeUsingBlockhash, appendTransactionMessageInstructions, type Blockhash } from "@solana/kit";
 import { describe, expect, it } from "vitest";
 import { parsePublicEnv } from "@/config/env";
 import { explorerAddressUrl, explorerTransactionUrl } from "@/features/receipt/lib/explorer-url";
@@ -105,11 +105,25 @@ describe("public env (Devnet only, no dead links)", () => {
     expect(parsePublicEnv({ NEXT_PUBLIC_SOLANA_RPC_URL: "http://evil.example" }).ok).toBe(false);
   });
 
-  it("accepts a proof signature only if it is a valid signature", async () => {
-    const signer = await generateKeyPairSigner();
-    void signer;
+  it("ignores retired public proof settings without disabling Devnet transfers", () => {
     expect(parsePublicEnv({ NEXT_PUBLIC_PROOF_SIGNATURE: SIG }).ok).toBe(true);
-    expect(parsePublicEnv({ NEXT_PUBLIC_PROOF_SIGNATURE: "not-a-signature" }).ok).toBe(false);
-    expect(getBase64Decoder).toBeTypeOf("function");
+    const parsed = parsePublicEnv({ NEXT_PUBLIC_PROOF_SIGNATURE: "not-a-signature" });
+    expect(parsed.ok).toBe(true);
+    expect(parsed.ok && parsed.env).not.toHaveProperty("NEXT_PUBLIC_PROOF_SIGNATURE");
+  });
+
+  it("allows HTTP only on exact loopback hosts, never localhost lookalikes", () => {
+    for (const host of ["localhost", "127.0.0.1", "[::1]"]) expect(parsePublicEnv({ NEXT_PUBLIC_SOLANA_RPC_URL: `http://${host}:8899` }).ok).toBe(true);
+    for (const url of ["http://localhost.evil.example", "http://localhost@evil.example"]) expect(parsePublicEnv({ NEXT_PUBLIC_SOLANA_RPC_URL: url }).ok).toBe(false);
+  });
+
+  it("reports malformed URLs as configuration issues instead of throwing at module load", () => {
+    for (const key of ["NEXT_PUBLIC_SOLANA_RPC_URL", "NEXT_PUBLIC_REPOSITORY_URL", "NEXT_PUBLIC_DOCS_URL"]) {
+      for (const value of ["not a url", "github.com/lidxgoesgiri/IntentShield"]) {
+        const parsed = parsePublicEnv({ [key]: value });
+        expect(parsed.ok).toBe(false);
+        expect(!parsed.ok && parsed.issues.some((issue) => issue.startsWith(`${key}:`))).toBe(true);
+      }
+    }
   });
 });

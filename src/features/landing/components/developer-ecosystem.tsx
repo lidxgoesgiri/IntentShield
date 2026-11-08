@@ -62,14 +62,6 @@ export function DeveloperEcosystem() {
                   <p className="text-[0.925rem] text-muted">Native SOL · Devnet only · inspectable verification.</p>
                 )}
               </li>
-              {links.proofSignature ? (
-                <li>
-                  <Link href={`/tx/${links.proofSignature}`} className="inline-flex min-h-11 items-center gap-2 text-white underline decoration-mint/60 underline-offset-[6px] hover:decoration-mint">
-                    View a verified Devnet transaction
-                  </Link>
-                  <p className="type-caption">Opens the receipt page, which re-checks the signature against Devnet RPC.</p>
-                </li>
-              ) : null}
               <li>
                 <Link href="/app/demo" className="inline-flex min-h-11 items-center gap-2 text-silver underline decoration-hairline underline-offset-[6px] hover:text-white">
                   Open the Demo Lab

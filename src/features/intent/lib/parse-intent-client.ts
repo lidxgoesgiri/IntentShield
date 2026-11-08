@@ -1,4 +1,5 @@
 import { MAX_INTENT_TEXT_LENGTH } from "@/config/product";
+import { readBoundedJson } from "@/lib/http/read-bounded-json";
 import { ParseIntentResponseSchema, ApiErrorSchema } from "../schema";
 import type { ParseIntentResponse } from "../types";
 import { enforceIntentGuards } from "./normalize-intent";
@@ -37,6 +38,7 @@ export async function requestIntentParse(
 
   let response: Response;
   try {
+    signal.throwIfAborted();
     response = await fetchImpl("/api/ai/parse-intent", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -50,8 +52,9 @@ export async function requestIntentParse(
 
   let payload: unknown;
   try {
-    payload = await response.json();
-  } catch {
+    payload = await readBoundedJson(response, { maxBytes: 16_384, signal });
+  } catch (error) {
+    if (options.signal?.aborted) throw options.signal.reason ?? error;
     // UT-15: malformed JSON → manual fallback.
     return { ok: false, kind: "invalid_response", message: AI_OFFLINE_MESSAGE };
   }

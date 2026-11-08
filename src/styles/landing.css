@@ -168,7 +168,20 @@
     transform: none;
   }
 }
-.hero-copy,
+/* The copy holds the LCP text and the primary CTA, so it is never hidden: it
+   only settles into place while the headline rises. The decorative visual keeps
+   its delayed fade. */
+.hero-copy {
+  animation: hero-settle 900ms var(--ease-out-soft) backwards;
+}
+@keyframes hero-settle {
+  from {
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    transform: none;
+  }
+}
 [data-hero-visual] {
   animation: hero-fade 900ms var(--ease-out-soft) backwards;
   animation-delay: 520ms;

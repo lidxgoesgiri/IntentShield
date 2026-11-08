@@ -72,6 +72,10 @@ export function SignatureRibbon({ variant, className }: { variant: SignatureRibb
     const start = performance.now();
     let target: Vec | null = null;
     let cursor: Vec | null = null;
+    let clientPointer: Vec | null = null;
+    let pointerDirty = false;
+    let geometryDirty = true;
+    let progress = 0;
 
     const frame = (now: number) => {
       raf = 0;
@@ -79,8 +83,17 @@ export function SignatureRibbon({ variant, className }: { variant: SignatureRibb
       if (now - lastFrame >= minFrameMs) {
         lastFrame = now;
         const time = (now - start) / 1000;
-        const rect = section.getBoundingClientRect();
-        const progress = Math.min(1, Math.max(0, -rect.top / Math.max(1, rect.height)));
+        // Geometry changes on scroll/resize, not on every decorative frame.
+        if (geometryDirty) {
+          const rect = section.getBoundingClientRect();
+          progress = Math.min(1, Math.max(0, -rect.top / Math.max(1, rect.height)));
+          geometryDirty = false;
+        }
+        if (pointerDirty) {
+          const matrix = clientPointer ? svg.getScreenCTM() : null;
+          target = matrix && clientPointer ? new DOMPoint(clientPointer.x, clientPointer.y).matrixTransform(matrix.inverse()) : null;
+          pointerDirty = false;
+        }
         if (target) {
           cursor = cursor ? { x: cursor.x + (target.x - cursor.x) * 0.08, y: cursor.y + (target.y - cursor.y) * 0.08 } : target;
         } else {
@@ -104,22 +117,31 @@ export function SignatureRibbon({ variant, className }: { variant: SignatureRibb
 
     const observer = new IntersectionObserver((entries) => {
       visible = entries.some((entry) => entry.isIntersecting);
+      if (!visible && raf) { cancelAnimationFrame(raf); raf = 0; }
+      geometryDirty = true;
       schedule();
     });
     observer.observe(svg);
 
-    const onVisibility = () => schedule();
+    const onVisibility = () => {
+      if (document.hidden && raf) { cancelAnimationFrame(raf); raf = 0; }
+      else schedule();
+    };
     document.addEventListener("visibilitychange", onVisibility);
 
+    const onGeometryChange = () => { geometryDirty = true; pointerDirty = true; };
+    window.addEventListener("scroll", onGeometryChange, { passive: true });
+    window.addEventListener("resize", onGeometryChange, { passive: true });
+
     const onPointerMove = (event: PointerEvent) => {
-      if (event.pointerType !== "mouse") return;
-      const matrix = svg.getScreenCTM();
-      if (!matrix) return;
-      const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse());
-      target = { x: point.x, y: point.y };
+      if (!visible || document.hidden || event.pointerType !== "mouse") return;
+      // Coalesce pointer bursts to the same 30fps update budget as the paths.
+      clientPointer = { x: event.clientX, y: event.clientY };
+      pointerDirty = true;
     };
     const onPointerLeave = () => {
-      target = null;
+      clientPointer = null;
+      pointerDirty = true;
     };
     if (!compact) {
       window.addEventListener("pointermove", onPointerMove, { passive: true });
@@ -131,6 +153,8 @@ export function SignatureRibbon({ variant, className }: { variant: SignatureRibb
       if (raf) cancelAnimationFrame(raf);
       observer.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("scroll", onGeometryChange);
+      window.removeEventListener("resize", onGeometryChange);
       window.removeEventListener("pointermove", onPointerMove);
       document.documentElement.removeEventListener("pointerleave", onPointerLeave);
     };

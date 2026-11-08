@@ -72,7 +72,11 @@ export function useTransferMachine() {
     runtimeRef.current = { address: wallet.address, signer: wallet.signer, supportsDevnet: wallet.supportsDevnet, online, networkVerified: devnet.state === "verified" };
     const operation = operationRef.current;
     const changed = stateRef.current.walletAddress !== wallet.address;
-    if (changed) cancelPreBroadcast();
+    if (changed) {
+      parseAbort.current?.abort();
+      if (stateRef.current.status === "PARSING_INTENT") dispatch({ type: "PARSE_CANCELLED" });
+      cancelPreBroadcast();
+    }
     dispatch({ type: "WALLET_CHANGED", address: wallet.address });
     if (operation && !operation.broadcastAttempted &&
       (operation.sender !== wallet.address || operation.signer !== wallet.signer || !wallet.supportsDevnet || !online || devnet.state !== "verified")) {
@@ -93,6 +97,42 @@ export function useTransferMachine() {
     },
     [],
   );
+
+  // Receipt metadata is independent of signing. Retry briefly when confirmed
+  // status arrives before getTransaction is indexed; reset/unmount cancels it.
+  const enrichmentSignature = state.receipt && (state.receipt.status === "confirmed" || state.receipt.status === "onchain_failed")
+    ? state.receipt.signature : null;
+  const metadataComplete = state.receipt?.feeLamports != null && state.receipt?.blockTime != null;
+  useEffect(() => {
+    if (!enrichmentSignature || metadataComplete) return;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let attempts = 0;
+    const load = async () => {
+      attempts += 1;
+      try {
+        const details = await getRpcPort().getTransaction(enrichmentSignature, controller.signal);
+        if (controller.signal.aborted) return;
+        const receipt = stateRef.current.receipt;
+        if (!receipt || receipt.signature !== enrichmentSignature) return;
+        if (details) {
+          const blockTime = details.blockTime ?? receipt.blockTime;
+          const feeLamports = details.fee ?? receipt.feeLamports;
+          dispatch({ type: "RECEIPT_DETAILS_LOADED", signature: enrichmentSignature, blockTime, feeLamports });
+          if (blockTime !== null && feeLamports !== null) return;
+        }
+      } catch {
+        if (controller.signal.aborted) return;
+        // Status is already established. A metadata outage must not downgrade it.
+      }
+      if (attempts < 3) timer = setTimeout(() => void load(), 1_500);
+    };
+    void load();
+    return () => {
+      controller.abort();
+      if (timer) clearTimeout(timer);
+    };
+  }, [enrichmentSignature, metadataComplete, dispatch]);
 
   // Blockhash lifetime watcher while waiting for the user to click Sign.
   const readyApprovalId = state.status === "READY_TO_SIGN" ? (state.approvedIntent?.approvalId ?? null) : null;
@@ -158,6 +198,13 @@ export function useTransferMachine() {
       }
     }
   }, [cancelPreBroadcast, dispatch]);
+
+  const cancelAnalysis = useCallback(() => {
+    if (stateRef.current.status !== "PARSING_INTENT") return;
+    parseAbort.current?.abort();
+    parseAbort.current = null;
+    dispatch({ type: "PARSE_CANCELLED" });
+  }, [dispatch]);
 
   const approve = useCallback(async () => {
     const current = stateRef.current;
@@ -268,16 +315,16 @@ export function useTransferMachine() {
       // From this point a lost response is ambiguous. Account changes must not
       // erase the signature or cancel receipt tracking.
       operation.broadcastAttempted = true;
-      rememberTransactionSignature(signed.signature);
+      rememberTransactionSignature(intent.sender, signed.signature);
       dispatch({ type: "BROADCAST_STARTED", approvalId, submittedAt: Date.now() });
       const outcome = await submitSignedTransfer(rpc, signed, prepared.lifetime.lastValidBlockHeight, { signal: controller.signal });
       dispatch({ type: "SUBMIT_RESOLVED", approvalId, outcome, submittedAt: Date.now() });
       if (outcome.kind !== "submitted" && outcome.kind !== "unknown") {
-        forgetTransactionSignature(signed.signature);
+        forgetTransactionSignature(intent.sender, signed.signature);
         return;
       }
 
-      const final = await waitForConfirmation(
+      await waitForConfirmation(
         rpc,
         { signature: signed.signature, lastValidBlockHeight: prepared.lifetime.lastValidBlockHeight },
         {
@@ -288,21 +335,6 @@ export function useTransferMachine() {
       // A fresh transfer may start while optional receipt metadata is fetched.
       // The lock still remembers this approval as used, so it cannot be re-signed.
       lockRef.current.release(approvalId);
-      if (final.status === "confirmed" || final.status === "onchain_failed") {
-        try {
-          const details = await rpc.getTransaction(signed.signature, controller.signal);
-          if (details) {
-            dispatch({
-              type: "RECEIPT_DETAILS_LOADED",
-              signature: signed.signature,
-              blockTime: details.blockTime,
-              feeLamports: details.fee,
-            });
-          }
-        } catch {
-          /* details are optional; status is already confirmed by RPC */
-        }
-      }
     } catch (error) {
       if (controller.signal.aborted) return;
       if (operation.broadcastAttempted) {
@@ -340,6 +372,6 @@ export function useTransferMachine() {
     devnet,
     approvalErrors,
     signAvailability,
-    actions: { setComposerText, editDraft, enterManually, analyze, approve, sign, reviewAgain, reset, recheckDevnet },
+    actions: { setComposerText, editDraft, enterManually, analyze, cancelAnalysis, approve, sign, reviewAgain, reset, recheckDevnet },
   };
 }

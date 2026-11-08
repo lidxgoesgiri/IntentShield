@@ -1,4 +1,5 @@
 import "server-only";
+import { readBoundedJson } from "@/lib/http/read-bounded-json";
 import type { AiConfig } from "./config";
 
 export type ChatMessage = Readonly<{ role: "system" | "user"; content: string }>;
@@ -17,6 +18,8 @@ export class AiProviderError extends Error {
 
 /** Per-call provider timeout (PRD §9.3). */
 export const AI_TIMEOUT_MS = 8_000;
+/** Includes the completion envelope, model output and provider metadata. */
+export const AI_MAX_RESPONSE_BYTES = 65_536;
 
 export type CompletionRequest = Readonly<{
   /** Model id from the server-side allowlist. */
@@ -34,7 +37,8 @@ export type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
 
 function isOpenRouter(baseUrl: string): boolean {
   try {
-    return new URL(baseUrl).hostname.endsWith("openrouter.ai");
+    const hostname = new URL(baseUrl).hostname;
+    return hostname === "openrouter.ai" || hostname.endsWith(".openrouter.ai");
   } catch {
     return false;
   }
@@ -77,6 +81,7 @@ export async function createChatCompletion(
 
   let response: Response;
   try {
+    signal.throwIfAborted();
     response = await fetchImpl(`${config.baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
@@ -90,6 +95,7 @@ export async function createChatCompletion(
       cache: "no-store",
     });
   } catch (error) {
+    if (request.signal?.aborted) throw request.signal.reason ?? error;
     if (timeout.aborted || (error instanceof DOMException && error.name === "TimeoutError")) {
       throw new AiProviderError("timeout", "AI provider timed out.");
     }
@@ -97,14 +103,17 @@ export async function createChatCompletion(
   }
 
   if (!response.ok) {
+    void response.body?.cancel().catch(() => undefined);
     throw new AiProviderError("unavailable", `AI provider responded with HTTP ${response.status}.`, response.status);
   }
 
   let payload: unknown;
   try {
-    payload = await response.json();
-  } catch {
-    throw new AiProviderError("bad_response", "AI provider returned a non-JSON body.", response.status);
+    payload = await readBoundedJson(response, { maxBytes: AI_MAX_RESPONSE_BYTES, signal });
+  } catch (error) {
+    if (request.signal?.aborted) throw request.signal.reason ?? error;
+    if (timeout.aborted) throw new AiProviderError("timeout", "AI provider timed out.");
+    throw new AiProviderError("bad_response", "AI provider returned an unreadable or oversized body.", response.status);
   }
 
   const content = (payload as { choices?: Array<{ message?: { content?: unknown } }> })?.choices?.[0]?.message?.content;

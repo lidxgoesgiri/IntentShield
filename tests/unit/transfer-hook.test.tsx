@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useTransferMachine } from "@/features/transfer/hooks/use-transfer-machine";
 import { signVerifiedTransfer } from "@/features/transfer/lib/sign-transfer";
 import { submitSignedTransfer, type SubmitOutcome } from "@/features/transfer/lib/submit-transfer";
@@ -8,6 +8,7 @@ import { waitForConfirmation } from "@/features/transfer/lib/confirm-transfer";
 import { useConnectedWallet, type ConnectedWalletInfo } from "@/features/wallet/hooks/use-connected-wallet";
 import { useProductContext } from "@/features/wallet/product-context";
 import { readRecoverableSignature } from "@/features/receipt/lib/transaction-recovery";
+import { requestIntentParse, type ParseClientResult } from "@/features/intent/lib/parse-intent-client";
 import { getRpcPort } from "@/lib/solana/client";
 import { createFakeRpc } from "@/test/mocks/fake-rpc";
 import { DEVNET_CONTEXT, OTHER, RECIPIENT, SENDER } from "@/test/fixtures/solana";
@@ -19,6 +20,7 @@ vi.mock("@/lib/solana/client", () => ({ getRpcPort: vi.fn() }));
 vi.mock("@/features/transfer/lib/sign-transfer", async (original) => ({ ...await original<typeof import("@/features/transfer/lib/sign-transfer")>(), signVerifiedTransfer: vi.fn() }));
 vi.mock("@/features/transfer/lib/submit-transfer", () => ({ submitSignedTransfer: vi.fn() }));
 vi.mock("@/features/transfer/lib/confirm-transfer", () => ({ waitForConfirmation: vi.fn() }));
+vi.mock("@/features/intent/lib/parse-intent-client", () => ({ requestIntentParse: vi.fn() }));
 
 const SIGNATURE = "5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW";
 const signed: SignedTransfer = { signature: SIGNATURE, wireBase64: "test-only", signedMessageFingerprint: "sha256:test", signedAt: 1 };
@@ -48,6 +50,8 @@ beforeEach(() => {
   });
 });
 
+afterEach(() => { vi.useRealTimers(); });
+
 async function ready() {
   const hook = renderHook(() => useTransferMachine());
   act(() => {
@@ -60,6 +64,50 @@ async function ready() {
 }
 
 describe("transfer orchestration cancellation and recovery", () => {
+  it("cancels an in-flight analysis and ignores a late provider response without losing the user's text", async () => {
+    const hook = renderHook(() => useTransferMachine());
+    const response = deferred<ParseClientResult>();
+    vi.mocked(requestIntentParse).mockReturnValue(response.promise);
+    act(() => { hook.result.current.actions.setComposerText(`Send 0.1 SOL to ${RECIPIENT}`); });
+    let task!: Promise<void>;
+    act(() => { task = hook.result.current.actions.analyze(); });
+    expect(hook.result.current.state.status).toBe("PARSING_INTENT");
+    const signal = vi.mocked(requestIntentParse).mock.calls[0]?.[1]?.signal;
+    act(() => { hook.result.current.actions.cancelAnalysis(); });
+    expect(signal?.aborted).toBe(true);
+    expect(hook.result.current.state.status).not.toBe("PARSING_INTENT");
+    expect(hook.result.current.state.composerText).toBe(`Send 0.1 SOL to ${RECIPIENT}`);
+    await act(async () => {
+      response.resolve({ ok: true, response: { status: "complete", draft: { action: "transfer_native_sol", amountSol: "0.1", recipient: RECIPIENT }, missingFields: [], explanation: "Draft" } });
+      await task;
+    });
+    expect(hook.result.current.state.draft.amountSol).toBe("");
+    expect(hook.result.current.state.draft.recipient).toBe("");
+    expect(hook.result.current.state.approvedIntent).toBeNull();
+    expect(signVerifiedTransfer).not.toHaveBeenCalled();
+  });
+
+  it("aborts account A's pending analysis when the wallet switches to account B", async () => {
+    const hook = renderHook(() => useTransferMachine());
+    const response = deferred<ParseClientResult>();
+    vi.mocked(requestIntentParse).mockReturnValue(response.promise);
+    act(() => { hook.result.current.actions.setComposerText(`Send 0.1 SOL to ${RECIPIENT}`); });
+    let task!: Promise<void>;
+    act(() => { task = hook.result.current.actions.analyze(); });
+    const signal = vi.mocked(requestIntentParse).mock.calls[0]?.[1]?.signal;
+    wallet = { ...wallet, address: OTHER };
+    hook.rerender();
+    expect(signal?.aborted).toBe(true);
+    expect(hook.result.current.state.status).not.toBe("PARSING_INTENT");
+    await act(async () => {
+      response.resolve({ ok: true, response: { status: "complete", draft: { action: "transfer_native_sol", amountSol: "0.1", recipient: RECIPIENT }, missingFields: [], explanation: "Draft" } });
+      await task;
+    });
+    expect(hook.result.current.state.draft.amountSol).toBe("");
+    expect(hook.result.current.state.draft.recipient).toBe("");
+    expect(hook.result.current.state.walletAddress).toBe(OTHER);
+  });
+
   it("locks before delayed blockheight and never opens the wallet after an account switch", async () => {
     const hook = await ready();
     const height = deferred<bigint>();
@@ -88,7 +136,7 @@ describe("transfer orchestration cancellation and recovery", () => {
     hook.rerender();
     await act(async () => { response.resolve(signed); await task; });
     expect(submitSignedTransfer).not.toHaveBeenCalled();
-    expect(readRecoverableSignature()).toBeNull();
+    expect(readRecoverableSignature(SENDER)).toBeNull();
   });
 
   it("releases a cancelled approval lock even when the old wallet ignores abort", async () => {
@@ -127,7 +175,7 @@ describe("transfer orchestration cancellation and recovery", () => {
     let task!: Promise<void>;
     act(() => { task = hook.result.current.actions.sign(); });
     await waitFor(() => expect(submitSignedTransfer).toHaveBeenCalledTimes(1));
-    expect(readRecoverableSignature()).toBe(SIGNATURE);
+    expect(readRecoverableSignature(SENDER)).toBe(SIGNATURE);
     expect(hook.result.current.state.receipt?.signature).toBe(SIGNATURE);
     wallet = { ...wallet, address: null, signer: null };
     hook.rerender();
@@ -135,7 +183,9 @@ describe("transfer orchestration cancellation and recovery", () => {
     expect(waitForConfirmation).toHaveBeenCalledTimes(1);
     expect(hook.result.current.state.status).toBe("CONFIRMED");
     expect(hook.result.current.state.receipt).toMatchObject({ signature: SIGNATURE, feeLamports: 5001n, estimatedFeeLamports: 5000n, blockTime: 100n });
-    expect(readRecoverableSignature()).toBe(SIGNATURE);
+    expect(readRecoverableSignature(SENDER)).toBe(SIGNATURE);
+    expect(readRecoverableSignature(null)).toBeNull();
+    expect(readRecoverableSignature(OTHER)).toBeNull();
   });
 
   it("double clicks request one signature and one broadcast", async () => {
@@ -175,5 +225,52 @@ describe("transfer orchestration cancellation and recovery", () => {
     expect(signVerifiedTransfer).toHaveBeenCalledTimes(2);
     expect(submitSignedTransfer).toHaveBeenCalledTimes(2);
     await act(async () => { metadata.resolve(null); await oldTask; });
+  });
+
+  it("retries transient or not-yet-indexed receipt metadata without signing or broadcasting again", async () => {
+    const hook = await ready();
+    vi.useFakeTimers();
+    rpc.port.getTransaction = vi.fn()
+      .mockRejectedValueOnce(new TypeError("Temporary metadata outage"))
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ slot: 12n, blockTime: 100n, fee: 5001n, err: null, wireBase64: "test-only" });
+    await act(async () => { await hook.result.current.actions.sign(); });
+    expect(hook.result.current.state.status).toBe("CONFIRMED");
+    expect(hook.result.current.state.receipt?.feeLamports).toBeNull();
+    await act(async () => { await vi.advanceTimersByTimeAsync(3_000); });
+    expect(rpc.port.getTransaction).toHaveBeenCalledTimes(3);
+    expect(hook.result.current.state.receipt).toMatchObject({ feeLamports: 5001n, blockTime: 100n });
+    expect(hook.result.current.state.status).toBe("CONFIRMED");
+    expect(signVerifiedTransfer).toHaveBeenCalledTimes(1);
+    expect(submitSignedTransfer).toHaveBeenCalledTimes(1);
+    await act(async () => { await vi.advanceTimersByTimeAsync(30_000); });
+    expect(rpc.port.getTransaction).toHaveBeenCalledTimes(3);
+  });
+
+  it("bounds metadata retries and keeps confirmed status when every metadata request fails", async () => {
+    const hook = await ready();
+    vi.useFakeTimers();
+    rpc.port.getTransaction = vi.fn().mockRejectedValue(new TypeError("Metadata unavailable"));
+    await act(async () => { await hook.result.current.actions.sign(); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(60_000); });
+    expect(rpc.port.getTransaction).toHaveBeenCalledTimes(3);
+    expect(hook.result.current.state.status).toBe("CONFIRMED");
+    expect(hook.result.current.state.receipt?.feeLamports).toBeNull();
+    expect(submitSignedTransfer).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores late metadata after reset even when the RPC ignores abort", async () => {
+    const hook = await ready();
+    const metadata = deferred<Awaited<ReturnType<typeof rpc.port.getTransaction>>>();
+    rpc.port.getTransaction = vi.fn().mockReturnValue(metadata.promise);
+    await act(async () => { await hook.result.current.actions.sign(); });
+    expect(hook.result.current.state.status).toBe("CONFIRMED");
+    expect(rpc.port.getTransaction).toHaveBeenCalledTimes(1);
+    const signal = vi.mocked(rpc.port.getTransaction).mock.calls[0]?.[1];
+    act(() => { hook.result.current.actions.reset(); });
+    expect(signal?.aborted).toBe(true);
+    await act(async () => { metadata.resolve({ slot: 12n, blockTime: 100n, fee: 5001n, err: null, wireBase64: "test-only" }); });
+    expect(hook.result.current.state.receipt).toBeNull();
+    expect(hook.result.current.state.approvedIntent).toBeNull();
   });
 });

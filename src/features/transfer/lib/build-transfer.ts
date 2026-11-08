@@ -1,6 +1,7 @@
 import { getTransferSolInstruction } from "@solana-program/system";
 import {
   appendTransactionMessageInstructions,
+  assertIsBlockhash,
   compileTransaction,
   createNoopSigner,
   createTransactionMessage,
@@ -78,6 +79,12 @@ export function buildNativeSolTransfer(
   lifetime: BlockhashLifetime,
   options: { version?: TransferMessageVersion; now?: number } = {},
 ): PreparedTransfer {
+  // Validate the actual decoded length, not only base58 text length. A codec
+  // must not silently truncate a malformed RPC lifetime into different bytes.
+  assertIsBlockhash(lifetime.blockhash);
+  if (typeof lifetime.lastValidBlockHeight !== "bigint" || lifetime.lastValidBlockHeight < 0n) {
+    throw new TypeError("The transaction lifetime is not a valid block height.");
+  }
   const version = options.version ?? 0;
   const source = createNoopSigner(params.sender);
 

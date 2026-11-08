@@ -18,6 +18,11 @@ function mockRpc(result: unknown) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("real Kit RPC adapter rejects incomplete success evidence", () => {
+  it("rejects base58 blockhash text that does not decode to exactly 32 bytes", async () => {
+    const rpc = mockRpc({ context: { slot: 1 }, value: { blockhash: "1".repeat(44), lastValidBlockHeight: 100 } });
+    await expect(rpc.getLatestBlockhash()).rejects.toMatchObject({ kind: "transport" });
+  });
+
   it.each([{}, { logs: [] }, { err: undefined }, { err: null, unitsConsumed: -1 }, { err: null, logs: "success" }])(
     "does not turn malformed simulation %j into success", async (value) => {
       const rpc = mockRpc({ context: { slot: 1 }, value });
@@ -92,6 +97,14 @@ describe("submission ambiguity through Kit transport", () => {
       jsonrpc: "2.0", id: "1", error: { code: -32002, message: "preflight", data: { err: { InstructionError: [0, { Custom: 1 }] }, logs: [] } },
     }));
     await expect(submitSignedTransfer(rpc, signed, 100n)).resolves.toMatchObject({ kind: "rejected", code: "INSUFFICIENT_LAMPORTS" });
+    expect(sends()).toBe(1);
+  });
+
+  it("does not claim expiry when a lagging RPC cannot find a still-live blockhash", async () => {
+    const { rpc, sends } = mockSend(() => Response.json({
+      jsonrpc: "2.0", id: "1", error: { code: -32002, message: "preflight", data: { err: "BlockhashNotFound", logs: [] } },
+    }));
+    await expect(submitSignedTransfer(rpc, signed, 100n)).resolves.toMatchObject({ kind: "rejected", code: "BLOCKHASH_NOT_FOUND" });
     expect(sends()).toBe(1);
   });
 });

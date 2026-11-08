@@ -10,31 +10,47 @@ export type BalanceState =
   | { status: "unavailable" };
 
 /** Real Devnet balance from RPC only; shows `unavailable` instead of guessing. */
-export function useBalance(address: string | null, refreshMs = 20_000) {
-  const [state, setState] = useState<BalanceState>({ status: "idle" });
+export function useBalance(address: string | null, refreshMs = 20_000, enabled = true) {
+  const [snapshot, setSnapshot] = useState<{ address: string; nonce: number; balance: BalanceState } | null>(null);
   const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
-    if (!address) return;
+    if (!address || !enabled) return;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let inFlight = false;
 
     const load = async () => {
+      if (document.hidden || inFlight) return;
+      timer = null;
+      inFlight = true;
       try {
         const lamports = await getRpcPort().getBalance(address, controller.signal);
-        if (!controller.signal.aborted) setState({ status: "ok", lamports, checkedAt: Date.now() });
+        if (!controller.signal.aborted) setSnapshot({ address, nonce, balance: { status: "ok", lamports, checkedAt: Date.now() } });
       } catch {
-        if (!controller.signal.aborted) setState({ status: "unavailable" });
+        if (!controller.signal.aborted) setSnapshot({ address, nonce, balance: { status: "unavailable" } });
       }
-      if (!controller.signal.aborted) timer = setTimeout(load, refreshMs);
+      inFlight = false;
+      if (!controller.signal.aborted && !document.hidden) timer = setTimeout(load, refreshMs);
     };
+    const onVisibility = () => {
+      if (document.hidden) {
+        if (timer) clearTimeout(timer);
+        timer = null;
+      } else if (!timer) void load();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
     void load();
     return () => {
       controller.abort();
       if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [address, nonce, refreshMs]);
+  }, [address, nonce, refreshMs, enabled]);
 
   const refresh = useCallback(() => setNonce((n) => n + 1), []);
-  return { balance: address ? state : ({ status: "idle" } as const), refresh };
+  const balance: BalanceState = !address || !enabled ? { status: "idle" }
+    : snapshot?.address === address && snapshot.nonce === nonce ? snapshot.balance
+      : { status: "loading" };
+  return { balance, refresh };
 }

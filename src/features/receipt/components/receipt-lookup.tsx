@@ -2,7 +2,7 @@
 
 import { RefreshCw, SearchX } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/misc";
@@ -14,13 +14,30 @@ import { ReceiptCard } from "./receipt-card";
 const POLL_MS = 3_000;
 const MAX_POLLS = 20;
 
+function confirmationRank(receipt: Extract<Lookup, { kind: "found" }>): number {
+  if (receipt.confirmationStatus === "finalized") return 2;
+  return receipt.confirmationStatus === "confirmed" || receipt.status === "confirmed" ? 1 : 0;
+}
+
 /** Client-side RPC lookup for /tx/[signature] (PRD §10.5). */
 export function ReceiptLookup({ signature }: { signature: string }) {
-  const [snapshot, setSnapshot] = useState<{ signature: string; lookup: Lookup; ended: boolean } | null>(null);
+  const [snapshot, setSnapshot] = useState<{ signature: string; lookup: Lookup; ended: boolean; refreshWarning: string | null } | null>(null);
   const [nonce, setNonce] = useState(0);
   const lookup = snapshot?.signature === signature ? snapshot.lookup : null;
   const ended = snapshot?.signature === signature && snapshot.ended;
-  const retry = () => { setSnapshot(null); setNonce((n) => n + 1); };
+  const refreshWarning = snapshot?.signature === signature ? snapshot.refreshWarning : null;
+  const retry = useCallback(() => {
+    setSnapshot((previous) => previous?.signature === signature && previous.lookup.kind === "found"
+      ? { ...previous, ended: false, refreshWarning: "A new RPC check is in progress. The receipt below remains the last observed result until an updated response is available." }
+      : null);
+    setNonce((n) => n + 1);
+  }, [signature]);
+
+  useEffect(() => {
+    if (lookup?.kind !== "unavailable" && !refreshWarning) return;
+    window.addEventListener("online", retry);
+    return () => window.removeEventListener("online", retry);
+  }, [lookup?.kind, refreshWarning, retry]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -33,7 +50,46 @@ export function ReceiptLookup({ signature }: { signature: string }) {
         polls += 1;
         const settled = result.kind === "found" && result.feeLamports !== null && (result.status === "onchain_failed" || result.confirmationStatus === "finalized");
         const keepPolling = !settled && result.kind !== "unavailable" && polls < MAX_POLLS;
-        setSnapshot({ signature, lookup: result, ended: !keepPolling && !settled });
+        setSnapshot((previous) => {
+          const observed = previous?.signature === signature && previous.lookup.kind === "found" ? previous.lookup : null;
+          if (observed && result.kind === "found") {
+            const failureConflicts = observed.status === "onchain_failed"
+              ? result.status !== "onchain_failed"
+              : observed.status === "confirmed" && result.status === "onchain_failed";
+            if (failureConflicts || confirmationRank(result) < confirmationRank(observed)) {
+              return {
+                signature,
+                lookup: observed,
+                ended: !keepPolling,
+                refreshWarning: failureConflicts
+                  ? "RPC responses disagree about the transaction outcome. The receipt below is the earlier observed result, not a new confirmation; check again or verify the signature in Explorer."
+                  : "The RPC returned a lower confirmation level than previously observed. The receipt below retains that earlier observation; it has not been freshly verified at that level.",
+              };
+            }
+            // Only carry optional details between consistent observations of
+            // the same slot. A different slot must use its own metadata.
+            if (observed.slot !== null && observed.slot === result.slot) {
+              return {
+                signature,
+                lookup: {
+                  ...result,
+                  blockTime: result.blockTime ?? observed.blockTime,
+                  feeLamports: result.feeLamports ?? observed.feeLamports,
+                  transfer: result.transfer ?? observed.transfer,
+                },
+                ended: !keepPolling && !settled,
+                refreshWarning: null,
+              };
+            }
+          }
+          if (observed && result.kind === "unavailable") {
+            return { signature, lookup: observed, ended: true, refreshWarning: "The RPC refresh failed. The receipt below is the last observed result; it has not been checked again yet." };
+          }
+          if (observed && observed.status !== "confirming" && result.kind === "not_found") {
+            return { signature, lookup: observed, ended: !keepPolling, refreshWarning: "This RPC response did not contain the transaction. The receipt below is the last observed result; check again or use Explorer for an independent lookup." };
+          }
+          return { signature, lookup: result, ended: !keepPolling && !settled, refreshWarning: null };
+        });
         if (keepPolling) timer = setTimeout(run, POLL_MS);
       } catch {
         /* aborted */
@@ -58,18 +114,25 @@ export function ReceiptLookup({ signature }: { signature: string }) {
 
   if (lookup.kind === "unavailable") {
     return (
-      <Alert
-        tone="warning"
-        role="alert"
-        title="Status unavailable"
-        action={
-          <Button variant="secondary" size="sm" onClick={retry}>
-            <RefreshCw className="size-4" aria-hidden /> Retry
-          </Button>
-        }
-      >
-        {lookup.message} No result is shown rather than a guessed one.
-      </Alert>
+      <div className="space-y-4">
+        <Alert
+          tone="warning"
+          role="alert"
+          title="Status unavailable"
+          action={
+            <Button variant="secondary" size="sm" onClick={retry}>
+              <RefreshCw className="size-4" aria-hidden /> Retry
+            </Button>
+          }
+        >
+          {lookup.message} No result is shown rather than a guessed one.
+        </Alert>
+        {explorer ? (
+          <a href={explorer} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center text-white underline decoration-mint/60 underline-offset-4">
+            Check Solana Explorer (Devnet)<span className="sr-only"> (opens in a new tab)</span>
+          </a>
+        ) : null}
+      </div>
     );
   }
 
@@ -95,6 +158,12 @@ export function ReceiptLookup({ signature }: { signature: string }) {
 
   return (
     <div className="space-y-4">
+      {refreshWarning ? (
+        <Alert tone="warning" title="Showing the last observed receipt">
+          <p>{refreshWarning}</p>
+          <Button variant="secondary" size="sm" className="mt-3" onClick={retry}><RefreshCw className="size-4" aria-hidden /> Check again</Button>
+        </Alert>
+      ) : null}
       <ReceiptCard
         showPermalink={false}
         data={{
@@ -110,7 +179,7 @@ export function ReceiptLookup({ signature }: { signature: string }) {
           error: lookup.error,
         }}
       />
-      {ended ? (
+      {ended && !refreshWarning ? (
         <Alert tone={lookup.status === "confirmed" ? "info" : "warning"} title={lookup.status === "confirmed" ? "Confirmed — automatic finality checks paused" : lookup.status === "onchain_failed" ? "Failed on chain — receipt details unavailable" : "Confirmation unknown — automatic checks paused"}>
           <p>{lookup.status === "confirmed" ? "Confirmation was observed. Finality or complete receipt details have not been observed yet." : lookup.status === "onchain_failed" ? "The network reported a transaction error. The actual charged fee is not available yet; check again for complete receipt details." : "The checking period ended without confirmation. This does not prove the transaction failed. Check its signature before sending again."}</p>
           <Button variant="secondary" size="sm" className="mt-3" onClick={retry}><RefreshCw className="size-4" aria-hidden /> Check again</Button>

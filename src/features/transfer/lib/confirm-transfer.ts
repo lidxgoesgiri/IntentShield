@@ -51,15 +51,20 @@ export type ConfirmOptions = Readonly<{
 
 function defaultSleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(resolve, ms);
-    signal?.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(timer);
-        reject(new DOMException("Aborted", "AbortError"));
-      },
-      { once: true },
-    );
+    if (signal?.aborted) {
+      reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+      reject(signal?.reason ?? new DOMException("Aborted", "AbortError"));
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", onAbort, { once: true });
   });
 }
 
@@ -83,6 +88,7 @@ export async function waitForConfirmation(
     options.signal?.throwIfAborted();
     try {
       const status = await rpc.getSignatureStatus(target.signature, { searchTransactionHistory: false }, options.signal);
+      options.signal?.throwIfAborted();
       let height: bigint | null = null;
       if (!status) {
         try {
@@ -91,10 +97,12 @@ export async function waitForConfirmation(
           height = null;
         }
       }
+      options.signal?.throwIfAborted();
       let interpretation = interpretSignatureStatus(status, height, target.lastValidBlockHeight);
       if (interpretation.status === "expired") {
         // Last look with full history before declaring the transaction expired.
         const historical = await rpc.getSignatureStatus(target.signature, { searchTransactionHistory: true }, options.signal);
+        options.signal?.throwIfAborted();
         interpretation = interpretSignatureStatus(historical, height, target.lastValidBlockHeight);
       }
       last = interpretation;
@@ -108,6 +116,7 @@ export async function waitForConfirmation(
     await sleep(pollIntervalMs, options.signal);
   }
 
+  options.signal?.throwIfAborted();
   const unknown: StatusInterpretation = {
     status: "unknown",
     confirmationStatus: last.confirmationStatus,

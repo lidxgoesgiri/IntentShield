@@ -2,7 +2,6 @@ import { ArrowDown, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
-import { HISTORICAL_DEVNET_PROOF } from "@/config/proof";
 import { HERO_COPY } from "../config/section-copy";
 import { SampleCheckCard, SampleIntentCard } from "../visuals/transaction-illustration";
 import { SignatureRibbon } from "../visuals/signature-ribbon";
@@ -61,9 +60,6 @@ export function HeroSection() {
                 </a>
               </Button>
             </div>
-            <Link href={`/tx/${HISTORICAL_DEVNET_PROOF.signature}`} className="inline-flex min-h-11 flex-wrap items-center gap-x-2 text-sm text-silver underline decoration-mint/50 underline-offset-4 hover:text-white">
-              <span className="text-mint">On-chain proof</span><span>0.01 SOL · historical Devnet transfer</span>
-            </Link>
             <div className="hero-trust-frame border-t border-hairline/80">
               <ul className="hero-trust" aria-label="What IntentShield is">
                 {HERO_COPY.trust.map((item) => (

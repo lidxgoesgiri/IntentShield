@@ -76,7 +76,7 @@ export function ManualTransferFields({
           invalid={Boolean(recipientError)}
           aria-describedby={describedBy("recipient", Boolean(recipientError), true)}
           className="font-data resize-none text-[0.95rem]"
-          onChange={(event) => onChange("recipient", event.target.value.replace(/\s+/g, ""))}
+          onChange={(event) => onChange("recipient", event.target.value)}
         />
       </Field>
     </fieldset>

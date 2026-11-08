@@ -56,9 +56,9 @@ export async function submitSignedTransfer(
           message: "The RPC reports that this transaction was already processed. Checking the original signature without resending.",
         };
       }
-      if (described.code === "BLOCKHASH_NOT_FOUND") {
-        return { kind: "expired", message: described.message };
-      }
+      // BlockhashNotFound can also mean this RPC node is behind the node that
+      // supplied the blockhash. Only an observed height beyond the recorded
+      // lifetime proves expiry; preflight rejection alone does not.
       return {
         kind: "rejected",
         code: classified.transactionError ? described.code : "RPC_REJECTED",

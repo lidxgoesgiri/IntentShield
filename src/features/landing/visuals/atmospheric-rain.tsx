@@ -177,7 +177,10 @@ export function AtmosphericRain() {
         }
       });
     };
-    const onVisibility = () => start();
+    const onVisibility = () => {
+      if (document.hidden && raf) { cancelAnimationFrame(raf); raf = 0; }
+      else start();
+    };
 
     window.addEventListener("resize", onResize, { passive: true });
     window.addEventListener("scroll", onScroll, { passive: true });

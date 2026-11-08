@@ -22,6 +22,7 @@ export type TransferEvent =
   | { type: "PARSE_STARTED"; requestId: string }
   | { type: "PARSE_SUCCEEDED"; requestId: string; response: ParseIntentResponse }
   | { type: "PARSE_FAILED"; requestId: string; kind: "unavailable" | "rate_limited" | "invalid_response"; message: string }
+  | { type: "PARSE_CANCELLED" }
   | { type: "MANUAL_ENTRY" }
   | { type: "DRAFT_EDITED"; field: "amountSol" | "recipient"; value: string }
   | { type: "WALLET_CHANGED"; address: string | null }
@@ -105,9 +106,9 @@ export function isDraftEditable(status: TransferStatus): boolean {
 
 /** Which draft-level status the current values imply. */
 function draftStatus(draft: DraftState, walletAddress: string | null, aiNotice: AiNotice | null): TransferStatus {
+  if (aiNotice?.kind === "needs_input" || aiNotice?.kind === "unsupported") return "NEEDS_INPUT";
   if (validateDraft(draft, walletAddress).ok) return "DRAFT_READY";
   if (aiNotice?.kind === "unavailable" || aiNotice?.kind === "rate_limited") return "AI_UNAVAILABLE";
-  if (aiNotice?.kind === "needs_input" || aiNotice?.kind === "unsupported") return "NEEDS_INPUT";
   return "IDLE";
 }
 
@@ -207,6 +208,11 @@ export function transferReducer(state: MachineState, event: TransferEvent): Mach
       });
     }
 
+    case "PARSE_CANCELLED": {
+      if (state.status !== "PARSING_INTENT") return state;
+      return invalidate(state, { status: "IDLE", parseRequestId: null, draft: EMPTY_DRAFT, aiNotice: null, notice: "Analysis cancelled. You can edit the request or enter the details manually." });
+    }
+
     case "PARSE_SUCCEEDED": {
       if (state.status !== "PARSING_INTENT" || state.parseRequestId !== event.requestId) return state;
       const { response } = event;
@@ -235,7 +241,7 @@ export function transferReducer(state: MachineState, event: TransferEvent): Mach
                 kind: "needs_input",
                 message: response.missingFields.includes("recipient")
                   ? "Paste the recipient's full Solana address. We won't guess it."
-                  : "Enter an exact amount in SOL.",
+                  : response.missingFields.includes("amountSol") ? "Enter an exact amount in SOL." : "Review the draft and enter the details manually to resolve the ambiguity.",
                 explanation: response.explanation,
                 missingFields: response.missingFields,
                 ...model,
@@ -271,7 +277,7 @@ export function transferReducer(state: MachineState, event: TransferEvent): Mach
 
     case "MANUAL_ENTRY": {
       if (!isDraftEditable(state.status)) return state;
-      return invalidate(state, { draft: { ...state.draft, source: "manual" } });
+      return invalidate(state, { draft: { ...state.draft, source: "manual" }, aiNotice: null });
     }
 
     case "DRAFT_EDITED": {
@@ -280,6 +286,7 @@ export function transferReducer(state: MachineState, event: TransferEvent): Mach
       const hadApproval = state.approvedIntent !== null;
       return invalidate(state, {
         draft: { ...state.draft, [event.field]: event.value, source: "manual" },
+        aiNotice: null,
         notice: hadApproval ? "You edited the transfer, so the previous approval and checks were discarded." : state.notice,
       });
     }
@@ -291,6 +298,7 @@ export function transferReducer(state: MachineState, event: TransferEvent): Mach
       return invalidate(
         { ...state, walletAddress: event.address },
         {
+          ...(state.walletAddress ? { composerText: "", draft: EMPTY_DRAFT, aiNotice: null, parseRequestId: null } : {}),
           notice: hadApproval
             ? event.address
               ? "Wallet changed — the previous approval and checks were cleared. Review and approve again."

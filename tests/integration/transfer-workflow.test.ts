@@ -84,6 +84,13 @@ describe("pre-sign pipeline with a fake RPC (integration)", () => {
     expect((await runPreSignPipeline(port, intent)).kind).toBe("unable_to_verify");
   });
 
+  it("an unreadable blockhash from an injected port cannot escape as an unhandled build failure", async () => {
+    const { port, calls } = createFakeRpc({ blockhash: { blockhash: "1".repeat(44), lastValidBlockHeight: 1_000n } });
+    await expect(runPreSignPipeline(port, intent)).resolves.toMatchObject({ kind: "unable_to_verify", code: "TRANSACTION_BUILD_FAILED" });
+    expect(calls.simulateTransaction).toBeUndefined();
+    expect(calls.sendTransaction).toBeUndefined();
+  });
+
   it("simulation error → simulation_failed with a readable reason", async () => {
     const { port } = createFakeRpc({
       simulation: { err: { InsufficientFundsForRent: { account_index: 1 } }, logs: [], unitsConsumed: 0n },
@@ -260,6 +267,28 @@ describe("sign boundary (integration)", () => {
 });
 
 describe("submit + confirm (integration)", () => {
+  it("cleans up each polling sleep's abort listener when the delay finishes", async () => {
+    const rpc = createFakeRpc({ statuses: [null, { confirmationStatus: "confirmed", err: null, slot: 8n }] });
+    const controller = new AbortController();
+    const added = vi.spyOn(controller.signal, "addEventListener");
+    const removed = vi.spyOn(controller.signal, "removeEventListener");
+    await expect(waitForConfirmation(rpc.port, { signature: "s", lastValidBlockHeight: 1_000n }, { pollIntervalMs: 1, signal: controller.signal })).resolves.toMatchObject({ status: "confirmed" });
+    expect(added).toHaveBeenCalledTimes(1);
+    expect(removed).toHaveBeenCalledWith("abort", added.mock.calls[0]![1]);
+  });
+
+  it("does not emit a late confirmation after the caller cancelled the lookup", async () => {
+    const rpc = createFakeRpc();
+    const controller = new AbortController();
+    rpc.port.getSignatureStatus = async () => {
+      controller.abort();
+      return { confirmationStatus: "confirmed", err: null, slot: 8n };
+    };
+    const onUpdate = vi.fn();
+    await expect(waitForConfirmation(rpc.port, { signature: "s", lastValidBlockHeight: 1_000n }, { signal: controller.signal, onUpdate })).rejects.toMatchObject({ name: "AbortError" });
+    expect(onUpdate).not.toHaveBeenCalled();
+  });
+
   it("broadcasts the verified bytes once and confirms only after RPC reports `confirmed`", async () => {
     const outcome = await readyOutcome();
     const signed = await signVerifiedTransfer({ intent, ...outcome, signer: honestSigner() });
@@ -329,5 +358,28 @@ describe("submit + confirm (integration)", () => {
       { sleep: async () => undefined, timeoutMs: 50, now: () => (clock += 20) },
     );
     expect(result.status).toBe("unknown");
+  });
+});
+
+describe("cancelled signing boundary (integration)", () => {
+  it("never opens a wallet for an already cancelled operation", async () => {
+    const outcome = await readyOutcome();
+    const controller = new AbortController();
+    controller.abort();
+    const signer = honestSigner();
+    await expect(signVerifiedTransfer({ intent, ...outcome, signer, signal: controller.signal })).rejects.toMatchObject({ name: "AbortError" });
+    expect(signer.modifyAndSignTransactions).not.toHaveBeenCalled();
+  });
+
+  it("discards a signed response if the wallet ignored cancellation", async () => {
+    const outcome = await readyOutcome();
+    const controller = new AbortController();
+    const signer: TransactionSignerPort = { modifyAndSignTransactions: vi.fn<TransactionSignerPort["modifyAndSignTransactions"]>(async (txs) => {
+      const signed = await Promise.all(txs.map((tx) => partiallySignTransaction([wallet.keyPair], tx)));
+      controller.abort();
+      return signed;
+    }) };
+    await expect(signVerifiedTransfer({ intent, ...outcome, signer, signal: controller.signal })).rejects.toMatchObject({ name: "AbortError" });
+    expect(signer.modifyAndSignTransactions).toHaveBeenCalledTimes(1);
   });
 });
