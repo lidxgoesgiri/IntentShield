@@ -97,6 +97,7 @@ export async function signVerifiedTransfer(args: {
 }): Promise<SignedTransfer> {
   const { intent, prepared, verification, simulation, context, signer } = args;
   const now = args.now ?? Date.now;
+  args.signal?.throwIfAborted();
 
   if (!isSigningGateOpen({ intent, prepared, verification, simulation })) {
     throw new SignBoundaryError("GATE_CLOSED", "Verification and simulation must both pass before signing.");
@@ -120,6 +121,7 @@ export async function signVerifiedTransfer(args: {
       args.signal ? { abortSignal: args.signal } : undefined,
     );
   } catch (error) {
+    args.signal?.throwIfAborted();
     if (isUserRejection(error)) {
       throw new SignBoundaryError("WALLET_REJECTED", "You rejected the request in your wallet. Nothing was sent.");
     }
@@ -128,6 +130,9 @@ export async function signVerifiedTransfer(args: {
       "The wallet did not return a signature. Nothing was sent.",
     );
   }
+  // Wallet extensions may ignore AbortSignal and resolve after cancellation.
+  // A cancelled boundary must never return a broadcastable result.
+  args.signal?.throwIfAborted();
 
   if (outputs.length !== 1 || !outputs[0]) {
     throw new SignBoundaryError("UNEXPECTED_OUTPUT", "The wallet returned an unexpected result. Nothing was sent.");
@@ -161,11 +166,13 @@ export async function signVerifiedTransfer(args: {
     const publicKey = await getPublicKeyFromAddress(intent.sender);
     valid = await verifySignature(publicKey, signatureBytes as SignatureBytes, prepared.messageBytes);
   } catch {
+    args.signal?.throwIfAborted();
     throw new SignBoundaryError(
       "SIGNATURE_UNVERIFIABLE",
       "This browser cannot verify Ed25519 signatures, so the transaction was not sent.",
     );
   }
+  args.signal?.throwIfAborted();
   if (!valid) {
     throw new SignBoundaryError("SIGNATURE_INVALID", "The wallet's signature is not valid for the reviewed transaction.");
   }

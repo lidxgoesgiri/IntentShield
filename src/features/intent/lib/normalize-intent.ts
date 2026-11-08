@@ -39,7 +39,11 @@ function amountInText(text: string): bigint | null {
   // Address digits never count as amounts, including a malformed long address.
   const withoutAddresses = text.replace(/[a-zA-Z0-9]{32,}/g, " ");
   for (const match of withoutAddresses.matchAll(NUMBER_TOKEN)) {
-    const token = match[0].replace(/SOL$/i, "");
+    // A single sentence separator after a complete decimal/unit is prose,
+    // unlike an interior comma/dot or exponent. Do not strip arbitrary suffixes:
+    // 0,1, 0.1.2 and 1e-1 must remain invalid numeric tokens.
+    const literal = /^\d+(?:\.\d+)?(?:SOL)?[.,]$/i.test(match[0]) ? match[0].slice(0, -1) : match[0];
+    const token = literal.replace(/SOL$/i, "");
     // A separated sign is still part of a signed amount, not a new positive value.
     if (/[-+\u2212]\s*$/.test(withoutAddresses.slice(0, match.index))) return null;
     const parsed = parseSolAmount(token, { maxLamports: COMPARISON_MAX_LAMPORTS });
@@ -68,8 +72,9 @@ export function sanitizeExplanation(value: unknown, fallback: string, maxLength 
  *   text: the model can never invent, complete, or resolve a recipient.
  * - There must be one distinct recipient and one unsigned decimal amount.
  *   Signed/comma/exponent tokens and multiple candidates need clarification.
- * - Status and missing fields are recomputed from the guarded values, so the
- *   model cannot claim "complete" for an incomplete draft.
+ * - Missing fields are recomputed from guarded values. A model's request for
+ *   clarification is preserved, even if its candidate fields are syntactically
+ *   complete: model uncertainty must not become approval automatically.
  */
 export function enforceIntentGuards(raw: RawModelIntent, userText: string): ParseIntentResponse {
   const action = raw.draft.action === "transfer_native_sol" ? "transfer_native_sol" : null;
@@ -105,8 +110,10 @@ export function enforceIntentGuards(raw: RawModelIntent, userText: string): Pars
   const missingFields: Array<"amountSol" | "recipient"> = [];
   if (amountSol === null) missingFields.push("amountSol");
   if (recipient === null) missingFields.push("recipient");
-  const status = missingFields.length === 0 ? "complete" : "needs_input";
-  const clarification = textAddresses.size > 1
+  const status = missingFields.length === 0 && raw.status !== "needs_input" ? "complete" : "needs_input";
+  const clarification = missingFields.length === 0
+    ? "This request needs clarification. Review the transfer details and enter them manually before approving."
+    : textAddresses.size > 1
     ? "Your request contains more than one recipient. Choose one full address, or enter the transfer manually."
     : amountSol === null
       ? "Enter one exact unsigned decimal amount in SOL (for example 0.1). Commas and scientific notation are not supported."

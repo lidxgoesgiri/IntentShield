@@ -1,4 +1,5 @@
 import { AiModelsResponseSchema, type AiModelsResponse } from "../schema";
+import { readBoundedJson } from "@/lib/http/read-bounded-json";
 
 type FetchLike = (input: string, init: RequestInit) => Promise<Response>;
 
@@ -10,9 +11,13 @@ export async function fetchAiModels(options: { signal?: AbortSignal; fetchImpl?:
   const timeout = AbortSignal.timeout(8_000);
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
   try {
+    signal.throwIfAborted();
     const response = await fetchImpl("/api/ai/models", { method: "GET", signal, cache: "no-store" });
-    if (!response.ok) return { ok: false };
-    const parsed = AiModelsResponseSchema.safeParse(await response.json());
+    if (!response.ok) {
+      void response.body?.cancel().catch(() => undefined);
+      return { ok: false };
+    }
+    const parsed = AiModelsResponseSchema.safeParse(await readBoundedJson(response, { maxBytes: 16_384, signal }));
     return parsed.success ? { ok: true, data: parsed.data } : { ok: false };
   } catch (error) {
     if (options.signal?.aborted) throw error;

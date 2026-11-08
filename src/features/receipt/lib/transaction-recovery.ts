@@ -1,25 +1,35 @@
 "use client";
 
-import { isSignature } from "@solana/kit";
-import { useSyncExternalStore } from "react";
+import { isAddress, isSignature } from "@solana/kit";
+import { useCallback, useSyncExternalStore } from "react";
 
-const STORAGE_KEY = "intentshield:last-broadcast-signature";
+const LEGACY_STORAGE_KEY = "intentshield:last-broadcast-signature";
+const STORAGE_PREFIX = "intentshield:devnet:last-broadcast-signature:";
 const CHANGE_EVENT = "intentshield:transaction-recovery";
 
-/** A public signature only: never retain a wallet key, signed wire payload or approval. */
-export function readRecoverableSignature(): string | null {
+function recoveryKey(walletAddress: string | null | undefined): string | null {
+  return walletAddress && isAddress(walletAddress) ? `${STORAGE_PREFIX}${walletAddress}` : null;
+}
+
+/** A public signature for this wallet only; legacy ownerless entries are never shown. */
+export function readRecoverableSignature(walletAddress: string | null | undefined): string | null {
+  const key = recoveryKey(walletAddress);
+  if (!key) return null;
   try {
-    const value = window.sessionStorage.getItem(STORAGE_KEY);
+    const value = window.sessionStorage.getItem(key);
     return value && isSignature(value) ? value : null;
   } catch {
     return null;
   }
 }
 
-export function rememberTransactionSignature(signature: string): void {
-  if (!isSignature(signature)) return;
+export function rememberTransactionSignature(walletAddress: string, signature: string): void {
+  const key = recoveryKey(walletAddress);
+  if (!key || !isSignature(signature)) return;
   try {
-    window.sessionStorage.setItem(STORAGE_KEY, signature);
+    window.sessionStorage.setItem(key, signature);
+    // The old entry cannot be safely attributed to a wallet. Never migrate it.
+    window.sessionStorage.removeItem(LEGACY_STORAGE_KEY);
     window.dispatchEvent(new Event(CHANGE_EVENT));
   } catch {
     // Storage may be disabled. The live receipt still tracks this signature.
@@ -27,10 +37,12 @@ export function rememberTransactionSignature(signature: string): void {
 }
 
 /** Only remove a signature when broadcast was definitively refused. */
-export function forgetTransactionSignature(signature: string): void {
+export function forgetTransactionSignature(walletAddress: string, signature: string): void {
+  const key = recoveryKey(walletAddress);
+  if (!key) return;
   try {
-    if (window.sessionStorage.getItem(STORAGE_KEY) !== signature) return;
-    window.sessionStorage.removeItem(STORAGE_KEY);
+    if (window.sessionStorage.getItem(key) !== signature) return;
+    window.sessionStorage.removeItem(key);
     window.dispatchEvent(new Event(CHANGE_EVENT));
   } catch {
     // Recovery is best-effort when browser storage is unavailable.
@@ -46,6 +58,7 @@ function subscribe(callback: () => void): () => void {
   };
 }
 
-export function useRecoverableSignature(): string | null {
-  return useSyncExternalStore(subscribe, readRecoverableSignature, () => null);
+export function useRecoverableSignature(walletAddress: string | null | undefined): string | null {
+  const snapshot = useCallback(() => readRecoverableSignature(walletAddress), [walletAddress]);
+  return useSyncExternalStore(subscribe, snapshot, () => null);
 }

@@ -93,7 +93,6 @@ To use the real workflow you need a Wallet Standard Solana wallet (Phantom, Solf
 | `NEXT_PUBLIC_SOLANA_CLUSTER` | public | Must be `devnet`; anything else fails validation. |
 | `NEXT_PUBLIC_APP_URL` | public | Used for metadata. |
 | `NEXT_PUBLIC_REPOSITORY_URL` / `NEXT_PUBLIC_DOCS_URL` | public | Repository link and optional docs URL. With a repository configured, docs default to its README. |
-| `NEXT_PUBLIC_PROOF_SIGNATURE` | public | Optional override for the historical verified Devnet signature linked from the landing. |
 | `OPENROUTER_API_KEY` | **server only** | Without it the AI routes answer `503 AI_UNAVAILABLE` and the manual flow is used. |
 | `OPENROUTER_MODEL` | **server only** | Default model (`provider/model[:variant]`); may be a comma-separated list whose first entry is the default. |
 | `OPENROUTER_MODELS` | **server only** | Optional extra selectable models (comma-separated). Malformed ids are dropped; ids outside the allowlist are rejected with `400`. |
@@ -123,9 +122,9 @@ Playwright normally uses its pinned Chromium browser. For local QA with an insta
 
 ## Testing summary
 
-The 8 Nov 2026 remediation passed **339/339 unit/integration tests across 27 files** and **107/107 browser E2E tests**, with no failed or skipped tests in the final runs. Lint, typecheck, and the default production build also passed. E2E used the installed Chrome/Chromium channel against the current local production build, with a test wallet and mocked Devnet RPC. The 7 Nov audit baseline was 265 unit/integration tests; 83 browser tests could not launch because the pinned Playwright browser was absent. Older README totals of 227/74 are superseded.
+The current revision passed **419/419 unit/integration tests across 31 files** and **113/113 browser E2E tests** (no failed, skipped or flaky tests), together with lint, typecheck and the default production build. E2E ran against a local production build in an installed Chrome, with a test wallet and mocked Devnet RPC. Earlier totals are superseded: 339/107 after the 8 Nov remediation, 265 unit/integration tests at the 7 Nov audit baseline (when 83 browser tests could not launch because the pinned Playwright browser was absent), and 227/74 before that.
 
-The suites include stale drafts, signing cancellation and late wallet responses, malformed RPC responses, ambiguous submission, receipt recovery, shared AI budgets, runtime motion preferences, and product routes at 320/375/768/1024/1440 px. Commands, screenshots, and lab measurements are recorded in the local implementation report at `artifacts/audit/IntentShield-Implementation-2026-11-08.md` and raw Playwright JSON; `artifacts/` is intentionally git-ignored. E2E never calls a real AI provider. Local lab timing is not a field Core Web Vitals percentile.
+The suites include stale drafts, signing cancellation and late wallet responses, malformed RPC responses, ambiguous submission, receipt recovery, wallet-scoped receipt privacy, AI cancellation and bounded responses, shared AI budgets, runtime motion preferences, and product routes at 320/375/768/1024/1440 px. E2E never calls a real AI provider. A local lab probe of the landing page (375×812 mobile emulation, 4× CPU throttling, five fresh runs) measured a median LCP of 588 ms after the hero copy stopped using a delayed opacity fade, down from 1,944 ms; this is lab timing, not a field Core Web Vitals percentile. Raw test output, probes and screenshots are kept locally and are not published.
 
 ### Verified historical Devnet transaction
 
@@ -146,7 +145,9 @@ The suites cover the PRD matrices:
 - Wallets may rewrite unsigned transactions (Phantom adds priority-fee instructions when a transaction has no compute budget). IntentShield therefore sets a small fixed compute budget so the signed bytes stay identical; if a wallet still changes anything (for example by adding Lighthouse assertions), IntentShield refuses to send and names the change.
 - Signature verification uses WebCrypto Ed25519 (modern browsers); unsupported browsers fail closed.
 - AI parse and explain share in-memory rate and daily-attempt counters within one process. Separate serverless instances and restarts do not share those counters, so this is **not a global spending hard cap**. Configure a provider/key spending limit for account-level cost control; no provider billing setting was changed during remediation.
-- An interrupted broadcast response is `unknown`, not proof that nothing was sent. A public signature is retained in session storage for receipt recovery; private keys, signed wire payloads, and approvals are not stored there. Check that signature before retrying a transfer.
+- An interrupted broadcast response is `unknown`, not proof that nothing was sent. A public signature is retained in session storage, scoped by Devnet and the originating wallet, for receipt recovery. Disconnecting or switching accounts hides the other wallet's details; private keys, signed wire payloads, and approvals are not stored there. Check that signature before retrying a transfer.
+- The landing never lists a visitor's transactions or links a maintainer's transaction as default history. Receipt permalinks remain public lookups of the explicitly supplied signature; sharing one exposes that public on-chain transaction.
+- AI response streams are bounded (provider 64 KiB, client API 16 KiB) and request deadlines include the body read. Analysis can be cancelled without accepting a late draft. Offline guard fixtures test deterministic validation, not live model accuracy.
 - CSP uses `'unsafe-inline'` for Next.js hydration scripts; `script-src-attr 'none'`, `frame-src 'none'`, and other restrictive directives reduce exposure but do not eliminate the inline-script trade-off.
 
 ## AI assistance disclosure

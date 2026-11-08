@@ -1,4 +1,3 @@
-import { isSignature } from "@solana/kit";
 import { z } from "zod";
 
 /**
@@ -11,7 +10,6 @@ const rawPublicEnv = {
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   NEXT_PUBLIC_REPOSITORY_URL: process.env.NEXT_PUBLIC_REPOSITORY_URL,
   NEXT_PUBLIC_DOCS_URL: process.env.NEXT_PUBLIC_DOCS_URL,
-  NEXT_PUBLIC_PROOF_SIGNATURE: process.env.NEXT_PUBLIC_PROOF_SIGNATURE,
 };
 
 const emptyToUndefined = (value: unknown) => (typeof value === "string" && value.trim() === "" ? undefined : value);
@@ -20,7 +18,18 @@ const httpsUrl = z
   .string()
   .trim()
   .url()
-  .refine((value) => value.startsWith("https://") || value.startsWith("http://localhost"), {
+  .refine((value) => {
+    // Zod still runs this refinement after `.url()` reports an issue, so a
+    // malformed value must become an issue here too, never an exception that
+    // crashes module load instead of failing closed through `configError`.
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      return false;
+    }
+    return url.protocol === "https:" || (url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname));
+  }, {
     message: "Must be an https URL",
   });
 
@@ -31,14 +40,6 @@ const publicEnvSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.preprocess(emptyToUndefined, z.string().url().default("http://localhost:3000")),
   NEXT_PUBLIC_REPOSITORY_URL: z.preprocess(emptyToUndefined, httpsUrl.optional()),
   NEXT_PUBLIC_DOCS_URL: z.preprocess(emptyToUndefined, httpsUrl.optional()),
-  NEXT_PUBLIC_PROOF_SIGNATURE: z.preprocess(
-    emptyToUndefined,
-    z
-      .string()
-      .trim()
-      .refine((value) => isSignature(value), { message: "Not a valid transaction signature" })
-      .optional(),
-  ),
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
@@ -63,6 +64,5 @@ export const publicConfig = {
   appUrl: publicEnvResult.ok ? publicEnvResult.env.NEXT_PUBLIC_APP_URL : "http://localhost:3000",
   repositoryUrl: publicEnvResult.ok ? publicEnvResult.env.NEXT_PUBLIC_REPOSITORY_URL : undefined,
   docsUrl: publicEnvResult.ok ? publicEnvResult.env.NEXT_PUBLIC_DOCS_URL : undefined,
-  proofSignature: publicEnvResult.ok ? publicEnvResult.env.NEXT_PUBLIC_PROOF_SIGNATURE : undefined,
   configError: publicEnvResult.ok ? null : publicEnvResult.issues.join("; "),
 };

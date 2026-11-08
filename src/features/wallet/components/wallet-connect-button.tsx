@@ -32,13 +32,15 @@ function WalletGlyph({ icon, name }: { icon: string | null; name: string }) {
  * wrong-network (no Devnet / no signTransaction), error (PRD §12).
  */
 export function WalletConnectButton() {
-  const { walletClient } = useProductContext();
+  const { walletClient, devnet, online } = useProductContext();
   const wallet = useConnectedWallet();
   const wallets = useWallets(walletClient);
   const connect = useConnect(walletClient);
   const disconnect = useDisconnect(walletClient);
-  const { balance } = useBalance(wallet.address);
+  const canReadBalance = online && devnet.state === "verified" && wallet.supportsDevnet;
+  const { balance, refresh } = useBalance(wallet.address, 20_000, canReadBalance);
   const [open, setOpen] = useState(false);
+  const [disconnectNotice, setDisconnectNotice] = useState(false);
 
   const connectError =
     connect.error && !(connect.error instanceof DOMException && connect.error.name === "AbortError")
@@ -85,7 +87,11 @@ export function WalletConnectButton() {
                     onClick={() => {
                       void connect
                         .dispatchAsync(w)
-                        .then(() => setOpen(false))
+                        .then(() => {
+                          // A fresh connection supersedes the earlier disconnect warning.
+                          setDisconnectNotice(false);
+                          setOpen(false);
+                        })
                         .catch(() => undefined);
                     }}
                   >
@@ -101,6 +107,11 @@ export function WalletConnectButton() {
             <p role="status" className="mt-4 text-[0.9rem] text-danger">
               {connectError}
             </p>
+          ) : null}
+          {disconnectNotice ? (
+            <Alert tone="warning" className="mt-4" title="Disconnected from IntentShield">
+              Your wallet could not confirm disconnection. This site&apos;s local session is disconnected; revoke its permission in your wallet if needed.
+            </Alert>
           ) : null}
           <p className="type-caption mt-5">
             Your wallet must support signing without sending. Enable Devnet / testnet mode so its preview matches this app.
@@ -132,20 +143,23 @@ export function WalletConnectButton() {
         <dl className="space-y-4">
           <div>
             <dt className="type-caption">Address (full)</dt>
-            <dd className="mt-1 flex items-center gap-1">
-              <span className="font-data text-[0.9rem] text-white">{wallet.address}</span>
+            <dd className="mt-1 flex min-w-0 items-center gap-1">
+              <span className="font-data min-w-0 flex-1 text-[0.9rem] text-white">{wallet.address}</span>
               <CopyButton value={wallet.address} label="wallet address" />
             </dd>
           </div>
           <div>
             <dt className="type-caption">Devnet balance (from RPC)</dt>
-            <dd className="mt-1 font-data text-white">
+            <dd className="mt-1 font-data text-white" role="status">
               {balance.status === "ok"
                 ? `${formatLamportsAsSol(balance.lamports)} SOL`
                 : balance.status === "unavailable"
                   ? "Unavailable — RPC did not respond"
-                  : "Loading…"}
+                  : balance.status === "idle" ? !online ? "Unavailable while offline" : "Verify Solana Devnet to read this balance" : "Loading…"}
             </dd>
+            <Button variant="ghost" size="sm" className="mt-1" onClick={refresh} disabled={!canReadBalance || balance.status === "loading"}>
+              Refresh balance
+            </Button>
           </div>
         </dl>
         {warning ? (
@@ -158,7 +172,12 @@ export function WalletConnectButton() {
             variant="secondary"
             size="sm"
             onClick={() => {
-              void disconnect.dispatchAsync().finally(() => setOpen(false));
+              void disconnect.dispatchAsync().then(() => { setDisconnectNotice(false); setOpen(false); }).catch(() => {
+                // Kit clears the local connection even if the extension rejects
+                // its disconnect call. Distinguish local state from revocation.
+                setDisconnectNotice(true);
+                setOpen(true);
+              });
             }}
             disabled={disconnect.isRunning}
           >

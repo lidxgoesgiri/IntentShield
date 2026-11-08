@@ -18,6 +18,7 @@ export function IntentComposer({
   text,
   onTextChange,
   onAnalyze,
+  onCancel,
   onManual,
   parsing,
   disabled,
@@ -28,6 +29,7 @@ export function IntentComposer({
   text: string;
   onTextChange: (value: string) => void;
   onAnalyze: () => void;
+  onCancel: () => void;
   onManual: () => void;
   parsing: boolean;
   disabled: boolean;
@@ -63,7 +65,7 @@ export function IntentComposer({
           onChange={(event) => onTextChange(event.target.value)}
           onKeyDown={(event) => {
             // Cmd/Ctrl+Enter analyzes; Enter never signs anything (PRD §12).
-            if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && !empty && !tooLong && !aiDisabledReason) {
+            if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && !event.repeat && !event.nativeEvent.isComposing && !disabled && !parsing && !empty && !tooLong && !aiDisabledReason) {
               event.preventDefault();
               onAnalyze();
             }
@@ -81,6 +83,7 @@ export function IntentComposer({
             </>
           )}
         </Button>
+        {parsing ? <Button variant="secondary" onClick={onCancel}>Cancel analysis</Button> : null}
         <Button variant="secondary" onClick={onManual} disabled={disabled}>
           <PenLine className="size-4" aria-hidden /> Enter Manually
         </Button>

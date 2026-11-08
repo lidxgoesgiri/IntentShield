@@ -64,6 +64,9 @@ async function runWithModelFallback<T>(
   let lastError: Error = new AiInvalidOutputError();
 
   for (const model of plan.chain) {
+    // A cancelled caller must never spend another attempt or be treated as a
+    // provider health failure when an injected transport ignores AbortSignal.
+    options.signal?.throwIfAborted();
     const remaining = deadline - now();
     if (remaining < MIN_ATTEMPT_MS) break;
     if (options.consumeBudget && !options.consumeBudget()) {
@@ -71,6 +74,7 @@ async function runWithModelFallback<T>(
     }
     try {
       const value = await attempt(model, Math.min(AI_TIMEOUT_MS, remaining));
+      options.signal?.throwIfAborted();
       if (value !== null) {
         options.health?.markSuccess(model);
         return {

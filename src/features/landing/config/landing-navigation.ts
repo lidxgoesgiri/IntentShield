@@ -1,5 +1,4 @@
 import { publicConfig } from "@/config/env";
-import { HISTORICAL_DEVNET_PROOF } from "@/config/proof";
 
 export { HEADER_ANCHORS, LANDING_SECTIONS, type LandingSectionId } from "./landing-sections";
 
@@ -11,6 +10,5 @@ export function externalLinks() {
   return {
     repository: publicConfig.repositoryUrl ?? null,
     docs: publicConfig.docsUrl ?? (publicConfig.repositoryUrl ? `${publicConfig.repositoryUrl}#readme` : null),
-    proofSignature: publicConfig.proofSignature ?? HISTORICAL_DEVNET_PROOF.signature,
   };
 }

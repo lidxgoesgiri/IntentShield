@@ -57,7 +57,12 @@ export function useAiModels(): AiModelsState {
         setStatus("ready");
       })
       .catch(() => {
-        if (!controller.signal.aborted) setStatus("unknown");
+        if (!controller.signal.aborted) {
+          setModels([]);
+          setDefaultModel(null);
+          setSelectedModel(null);
+          setStatus("unknown");
+        }
       });
     return () => controller.abort();
   }, [loadNonce]);

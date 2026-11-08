@@ -59,6 +59,37 @@ function readyToSign(): { state: MachineState; intent: ApprovedIntent } {
 }
 
 describe("transfer state machine (PRD §7)", () => {
+  it("clears account-specific drafts on wallet switch while retaining a draft on first connection", () => {
+    const connected = draftReady();
+    for (const address of [OTHER, null]) {
+      const changed = transferReducer(connected, { type: "WALLET_CHANGED", address });
+      expect(changed.draft).toMatchObject({ amountSol: "", recipient: "" });
+      expect(changed.composerText).toBe("");
+    }
+    const disconnected = { ...connected, walletAddress: null };
+    const firstConnect = transferReducer(disconnected, { type: "WALLET_CHANGED", address: SENDER });
+    expect(firstConnect.draft).toEqual(connected.draft);
+  });
+
+  it("keeps model clarification required through network invalidation until explicit manual entry", () => {
+    const parsing = transferReducer(createInitialState(SENDER), { type: "PARSE_STARTED", requestId: "clarify" });
+    const incomplete = transferReducer(parsing, { type: "PARSE_SUCCEEDED", requestId: "clarify", response: {
+      status: "needs_input", draft: { action: "transfer_native_sol", amountSol: "0.1", recipient: RECIPIENT }, missingFields: [], explanation: "Please clarify.",
+    } });
+    expect(incomplete.status).toBe("NEEDS_INPUT");
+    const changed = transferReducer(incomplete, { type: "CHECKS_INVALIDATED", message: "Network changed" });
+    expect(changed.status).toBe("NEEDS_INPUT");
+    expect(transferReducer(changed, { type: "MANUAL_ENTRY" }).status).toBe("DRAFT_READY");
+  });
+
+  it("cancellation rejects a late parse result without clearing the user's request text", () => {
+    const text = `Send 0.1 SOL to ${RECIPIENT}`;
+    const pending = reduce(createInitialState(SENDER), { type: "COMPOSER_CHANGED", text }, { type: "PARSE_STARTED", requestId: "old" });
+    const cancelled = transferReducer(pending, { type: "PARSE_CANCELLED" });
+    expect(cancelled.status).toBe("IDLE");
+    expect(cancelled.composerText).toBe(text);
+    expect(transferReducer(cancelled, { type: "PARSE_SUCCEEDED", requestId: "old", response: { status: "complete", draft: { action: "transfer_native_sol", amountSol: "0.1", recipient: RECIPIENT }, missingFields: [], explanation: "Draft" } })).toBe(cancelled);
+  });
   it("starts IDLE and reaches DRAFT_READY only with valid fields", () => {
     expect(createInitialState().status).toBe("IDLE");
     const partial = reduce(createInitialState(SENDER), { type: "DRAFT_EDITED", field: "amountSol", value: "0.1" });

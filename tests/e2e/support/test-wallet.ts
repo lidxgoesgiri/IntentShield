@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-export type TestWalletMode = "approve" | "reject" | "mutate";
+export type TestWalletMode = "approve" | "reject" | "mutate" | "disconnect-reject";
 
 /**
  * Registers a TEST-ONLY Wallet Standard wallet inside the page (never part of
@@ -89,6 +89,7 @@ export async function installTestWallet(page: Page, mode: TestWalletMode = "appr
         "standard:disconnect": {
           version: "1.0.0",
           disconnect: async () => {
+            if (walletMode === "disconnect-reject") throw new Error("Test wallet disconnect refused");
             emit();
           },
         },
@@ -138,4 +139,38 @@ export async function installTestWallet(page: Page, mode: TestWalletMode = "appr
 
 export async function testWalletSignCalls(page: Page): Promise<number> {
   return page.evaluate(() => (window as unknown as { __testWallet: { signCalls: number } }).__testWallet.signCalls);
+}
+
+/** Emit real Wallet Standard account-change events with browser-generated test keys only. */
+export async function selectTestWalletAccount(page: Page, selection: "original" | "other" | "disconnected") {
+  await page.evaluate(async (next) => {
+    type TestAccount = { address: string; publicKey: Uint8Array; chains: string[]; features: string[]; label: string };
+    type Identity = { keyPair: CryptoKeyPair; account: TestAccount };
+    const state = (window as unknown as { __testWallet: {
+      keyPair: CryptoKeyPair | null; account: TestAccount | null; listeners: Array<(props: unknown) => void>;
+      originalIdentity?: Identity; otherIdentity?: Identity;
+    } }).__testWallet;
+    if (!state.originalIdentity) {
+      if (!state.keyPair || !state.account) throw new Error("Connect the test wallet before changing accounts.");
+      state.originalIdentity = { keyPair: state.keyPair, account: state.account };
+    }
+    if (next === "disconnected") state.account = null;
+    else {
+      if (next === "other" && !state.otherIdentity) {
+        const keyPair = await crypto.subtle.generateKey("Ed25519", true, ["sign", "verify"]) as CryptoKeyPair;
+        const publicKey = new Uint8Array(await crypto.subtle.exportKey("raw", keyPair.publicKey));
+        const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+        let value = 0n;
+        for (const byte of publicKey) value = (value << 8n) + BigInt(byte);
+        let encoded = "";
+        while (value > 0n) { encoded = alphabet[Number(value % 58n)] + encoded; value /= 58n; }
+        for (const byte of publicKey) { if (byte !== 0) break; encoded = `1${encoded}`; }
+        state.otherIdentity = { keyPair, account: { ...state.originalIdentity.account, address: encoded, publicKey, label: "Other E2E test account" } };
+      }
+      const identity = next === "other" ? state.otherIdentity! : state.originalIdentity;
+      state.account = identity.account;
+      state.keyPair = identity.keyPair;
+    }
+    state.listeners.forEach((listener) => listener({ accounts: state.account ? [state.account] : [] }));
+  }, selection);
 }

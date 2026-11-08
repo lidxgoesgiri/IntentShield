@@ -69,11 +69,20 @@ export async function runPreSignPipeline(
   }
   if (aborted()) return { kind: "aborted" };
 
-  const prepared = buildNativeSolTransfer(
-    { sender: intent.sender, recipient: intent.recipient, amountLamports: intent.amountLamports },
-    lifetime,
-    { version: options.version ?? 0, now: now() },
-  );
+  let prepared: PreparedTransfer;
+  try {
+    prepared = buildNativeSolTransfer(
+      { sender: intent.sender, recipient: intent.recipient, amountLamports: intent.amountLamports },
+      lifetime,
+      { version: options.version ?? 0, now: now() },
+    );
+  } catch {
+    return {
+      kind: "unable_to_verify",
+      code: "TRANSACTION_BUILD_FAILED",
+      message: "The transaction could not be built from the current network response. Review and approve again. Nothing was signed.",
+    };
+  }
   emit({ type: "build_succeeded", prepared, context: network.context });
 
   // Independent check of the exact bytes that would be signed.

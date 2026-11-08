@@ -1,5 +1,5 @@
 import {
-  createSolanaRpc, isSolanaError, SOLANA_ERROR__JSON_RPC__SERVER_ERROR_SEND_TRANSACTION_PREFLIGHT_FAILURE,
+  createSolanaRpc, isBlockhash, isSolanaError, SOLANA_ERROR__JSON_RPC__SERVER_ERROR_SEND_TRANSACTION_PREFLIGHT_FAILURE,
   SOLANA_ERROR__RPC__TRANSPORT_HTTP_ERROR, SOLANA_ERROR__TRANSACTION_ERROR__ALREADY_PROCESSED,
   SOLANA_ERROR__TRANSACTION_ERROR__BLOCKHASH_NOT_FOUND, SOLANA_ERROR__TRANSACTION_ERROR__INSUFFICIENT_FUNDS_FOR_FEE,
   SOLANA_ERROR__TRANSACTION_ERROR__ACCOUNT_NOT_FOUND, SOLANA_ERROR__TRANSACTION_ERROR__INSUFFICIENT_FUNDS_FOR_RENT,
@@ -156,7 +156,7 @@ export function createSolanaRpcPort(rpcUrl: string, timeoutMs = DEFAULT_TIMEOUT_
     getLatestBlockhash: (signal) =>
       call(signal, async (abortSignal) => {
         const { value } = await rpc.getLatestBlockhash({ commitment: "confirmed" }).send({ abortSignal });
-        return readRpcValue(z.object({ blockhash: z.string().regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/), lastValidBlockHeight: unsignedInteger }), value);
+        return readRpcValue(z.object({ blockhash: z.string().refine(isBlockhash), lastValidBlockHeight: unsignedInteger }), value);
       }),
 
     getBlockHeight: (signal) =>
