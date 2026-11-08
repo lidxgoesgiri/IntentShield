@@ -1,6 +1,7 @@
 import { Activity } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Disclosure, Spinner } from "@/components/ui/misc";
+import { DevnetFaucetLink } from "@/features/wallet/components/devnet-faucet-link";
 import { formatLamportsAsSol } from "@/lib/format/sol";
 import type { SimulationResult } from "../types";
 
@@ -33,6 +34,11 @@ export function SimulationPanel({ running, result }: { running: boolean; result:
             >
               {result.error}
               {result.errorCode ? <code className="ml-2 font-mono text-[0.8125rem] text-muted">{result.errorCode}</code> : null}
+              {result.errorCode === "INSUFFICIENT_BALANCE" ? (
+                <p className="mt-2">
+                  <DevnetFaucetLink className="min-h-0" />, then choose Review again. Devnet SOL has no value.
+                </p>
+              ) : null}
             </Alert>
           )}
           <dl className="grid grid-cols-2 gap-3 text-[0.85rem] sm:grid-cols-3">

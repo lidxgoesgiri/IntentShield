@@ -182,6 +182,22 @@ test.describe("real workflow with a test wallet + mocked Devnet RPC (PRD §19.3)
     await expect(page.getByText("Simulation failed — signing disabled")).toBeVisible();
     await expect(page.getByText(/Insufficient balance/)).toBeVisible();
     expect(rpc.methods).not.toContain("simulateTransaction");
+    // A first-time tester is pointed to free Devnet SOL, in a new tab, from the failure itself and from the wallet dialog.
+    const faucet = page.getByRole("alert").filter({ hasText: "Simulation failed" }).getByRole("link", { name: /Get free Devnet SOL from the Solana Faucet/ });
+    await expect(faucet).toHaveAttribute("href", "https://faucet.solana.com");
+    await expect(faucet).toHaveAttribute("target", "_blank");
+    await expect(faucet).toHaveAttribute("rel", /noopener/);
+    await page.getByRole("button", { name: /Wallet IntentShield Test Wallet connected/ }).click();
+    await expect(page.getByRole("dialog").getByRole("link", { name: /Solana Faucet/ })).toHaveAttribute("href", "https://faucet.solana.com");
+  });
+
+  test("the wallet dialog stays clean when the Devnet balance is sufficient", async ({ page }) => {
+    await openApp(page);
+    await connect(page);
+    await page.getByRole("button", { name: /Wallet IntentShield Test Wallet connected/ }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByText("2 SOL", { exact: true })).toBeVisible();
+    await expect(dialog.getByRole("link", { name: /Solana Faucet/ })).toHaveCount(0);
   });
 
   test("a non-Devnet RPC (mainnet genesis) disables approval entirely", async ({ page }) => {
